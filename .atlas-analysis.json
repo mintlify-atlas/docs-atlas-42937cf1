@@ -1,0 +1,207 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Advanced iMessage Kit",
+  "projectDescription": "A powerful TypeScript SDK for iMessage automation with real-time messaging support on macOS",
+  "theme": "aspen",
+  "primaryColor": "#007AFF",
+  "lightColor": "#5AC8FA",
+  "darkColor": "#0A84FF",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart",
+              "configuration"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "core-concepts/chat-guids",
+              "core-concepts/connection-events",
+              "core-concepts/error-handling"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/sending-messages",
+              "guides/receiving-messages",
+              "guides/managing-chats",
+              "guides/working-with-attachments",
+              "guides/real-time-events",
+              "guides/scheduled-messages",
+              "guides/polls",
+              "guides/best-practices"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Client",
+            "pages": [
+              "api/client/advanced-imessage-kit",
+              "api/client/configuration"
+            ]
+          },
+          {
+            "group": "Messages",
+            "pages": [
+              "api/messages/send-message",
+              "api/messages/get-messages",
+              "api/messages/edit-message",
+              "api/messages/unsend-message",
+              "api/messages/send-reaction",
+              "api/messages/message-effects"
+            ]
+          },
+          {
+            "group": "Chats",
+            "pages": [
+              "api/chats/get-chats",
+              "api/chats/get-chat",
+              "api/chats/create-chat",
+              "api/chats/manage-groups",
+              "api/chats/typing-indicators",
+              "api/chats/chat-backgrounds"
+            ]
+          },
+          {
+            "group": "Attachments",
+            "pages": [
+              "api/attachments/send-attachment",
+              "api/attachments/download-attachment",
+              "api/attachments/send-sticker",
+              "api/attachments/audio-messages"
+            ]
+          },
+          {
+            "group": "Contacts & Handles",
+            "pages": [
+              "api/contacts/get-contacts",
+              "api/contacts/contact-card",
+              "api/handles/query-handles",
+              "api/handles/check-availability"
+            ]
+          },
+          {
+            "group": "Scheduled Messages",
+            "pages": [
+              "api/scheduled/create-scheduled-message",
+              "api/scheduled/manage-scheduled-messages"
+            ]
+          },
+          {
+            "group": "Polls",
+            "pages": [
+              "api/polls/create-poll",
+              "api/polls/vote",
+              "api/polls/parse-polls"
+            ]
+          },
+          {
+            "group": "iCloud & Find My",
+            "pages": [
+              "api/icloud/find-my-friends"
+            ]
+          },
+          {
+            "group": "Server",
+            "pages": [
+              "api/server/server-info",
+              "api/server/statistics"
+            ]
+          },
+          {
+            "group": "Events",
+            "pages": [
+              "api/events/message-events",
+              "api/events/chat-events",
+              "api/events/group-events",
+              "api/events/typing-events"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Examples",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "examples/basic-usage",
+              "examples/auto-reply-bot"
+            ]
+          },
+          {
+            "group": "Message Examples",
+            "pages": [
+              "examples/send-with-effects",
+              "examples/edit-and-unsend",
+              "examples/reactions-and-tapbacks",
+              "examples/rich-links"
+            ]
+          },
+          {
+            "group": "Advanced Features",
+            "pages": [
+              "examples/group-chat-management",
+              "examples/scheduled-messages",
+              "examples/polls",
+              "examples/find-my-integration"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Send and receive iMessages with real-time events",
+    "Edit, unsend, and react to messages",
+    "Manage group chats and participants",
+    "Send attachments, stickers, and audio messages",
+    "Schedule one-time and recurring messages",
+    "Create and vote on polls",
+    "Find My Friends integration",
+    "Full TypeScript support with type safety",
+    "Message effects (confetti, fireworks, etc.)",
+    "Typing indicators and read receipts"
+  ],
+  "publicApiSurface": [
+    "AdvancedIMessageKit",
+    "SDK",
+    "messages.sendMessage()",
+    "messages.getMessages()",
+    "messages.editMessage()",
+    "messages.unsendMessage()",
+    "messages.sendReaction()",
+    "chats.getChats()",
+    "chats.createChat()",
+    "chats.addParticipant()",
+    "chats.startTyping()",
+    "attachments.sendAttachment()",
+    "attachments.sendSticker()",
+    "attachments.downloadAttachment()",
+    "contacts.getContacts()",
+    "contacts.shareContactCard()",
+    "handles.getHandleAvailability()",
+    "polls.create()",
+    "polls.vote()",
+    "scheduledMessages.createScheduledMessage()",
+    "icloud.refreshFindMyFriends()",
+    "server.getServerInfo()",
+    "on('new-message')",
+    "on('updated-message')",
+    "on('typing-indicator')",
+    "on('group-name-change')"
+  ]
+}
