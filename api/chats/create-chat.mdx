@@ -8,7 +8,7 @@ description: "Create new chat conversations"
 Create a new chat conversation with one or more participants.
 
 ```typescript
-await client.chat.createChat(options): Promise<ChatResponse>
+await sdk.chats.createChat(options): Promise<ChatResponse>
 ```
 
 ### Parameters
@@ -106,12 +106,12 @@ await client.chat.createChat(options): Promise<ChatResponse>
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 // Create a 1-on-1 chat with initial message
-const individualChat = await client.chat.createChat({
+const individualChat = await sdk.chats.createChat({
   addresses: ['+1234567890'],
   message: 'Hey! How are you?'
 });
@@ -119,7 +119,7 @@ const individualChat = await client.chat.createChat({
 console.log(`Created chat: ${individualChat.guid}`);
 
 // Create a group chat
-const groupChat = await client.chat.createChat({
+const groupChat = await sdk.chats.createChat({
   addresses: ['+1234567890', '+0987654321', 'friend@icloud.com'],
   message: 'Welcome to the group!',
   subject: 'Weekend Plans'
@@ -128,21 +128,21 @@ const groupChat = await client.chat.createChat({
 console.log(`Created group: ${groupChat.displayName}`);
 
 // Create chat with SMS service
-const smsChat = await client.chat.createChat({
+const smsChat = await sdk.chats.createChat({
   addresses: ['+1234567890'],
   service: 'SMS',
   message: 'Sending via SMS'
 });
 
 // Create chat with message effect
-const chatWithEffect = await client.chat.createChat({
+const chatWithEffect = await sdk.chats.createChat({
   addresses: ['+1234567890'],
   message: 'Happy Birthday!',
   effectId: 'com.apple.messages.effect.CKConfettiEffect'
 });
 
 // Create chat using private API
-const privateApiChat = await client.chat.createChat({
+const privateApiChat = await sdk.chats.createChat({
   addresses: ['+1234567890'],
   message: 'Hello!',
   method: 'private-api'

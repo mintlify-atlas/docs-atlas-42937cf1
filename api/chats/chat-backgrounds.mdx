@@ -8,7 +8,7 @@ description: "Manage custom backgrounds for chat conversations"
 Retrieve the current background configuration for a chat.
 
 ```typescript
-await client.chat.getBackground(chatGuid): Promise<{
+await sdk.chats.getBackground(chatGuid): Promise<{
   hasBackground: boolean;
   backgroundChannelGUID?: string | null;
   imageUrl?: string | null;
@@ -47,14 +47,14 @@ await client.chat.getBackground(chatGuid): Promise<{
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Get current background
-const background = await client.chat.getBackground(chatGuid);
+const background = await sdk.chats.getBackground(chatGuid);
 
 if (background.hasBackground) {
   console.log('Background URL:', background.imageUrl);
@@ -71,7 +71,7 @@ if (background.hasBackground) {
 Set a custom background for a chat using an image URL, file path, or base64 data.
 
 ```typescript
-await client.chat.setBackground(
+await sdk.chats.setBackground(
   chatGuid,
   options: string | { imageUrl?: string; filePath?: string; fileData?: string }
 ): Promise<void>
@@ -106,35 +106,35 @@ Returns a Promise that resolves when the background is set.
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 import { readFileSync } from 'fs';
 import path from 'path';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Set background using image URL (shorthand)
-await client.chat.setBackground(
+await sdk.chats.setBackground(
   chatGuid,
   'https://example.com/images/background.jpg'
 );
 
 // Set background using image URL (object syntax)
-await client.chat.setBackground(chatGuid, {
+await sdk.chats.setBackground(chatGuid, {
   imageUrl: 'https://example.com/images/background.jpg'
 });
 
 // Set background using local file path
 const imagePath = path.join(__dirname, 'images', 'chat-bg.png');
-await client.chat.setBackground(chatGuid, {
+await sdk.chats.setBackground(chatGuid, {
   filePath: imagePath
 });
 
 // Set background using base64 data
 const imageBuffer = readFileSync(imagePath);
 const base64Data = imageBuffer.toString('base64');
-await client.chat.setBackground(chatGuid, {
+await sdk.chats.setBackground(chatGuid, {
   fileData: base64Data
 });
 
@@ -148,7 +148,7 @@ console.log('Chat background updated successfully');
 Remove the custom background from a chat.
 
 ```typescript
-await client.chat.removeBackground(chatGuid): Promise<void>
+await sdk.chats.removeBackground(chatGuid): Promise<void>
 ```
 
 ### Parameters
@@ -164,44 +164,44 @@ Returns a Promise that resolves when the background is removed.
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Remove chat background
-await client.chat.removeBackground(chatGuid);
+await sdk.chats.removeBackground(chatGuid);
 console.log('Chat background removed');
 ```
 
 ### Complete Background Management Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 import path from 'path';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Check current background
-const currentBg = await client.chat.getBackground(chatGuid);
+const currentBg = await sdk.chats.getBackground(chatGuid);
 console.log('Current background:', currentBg);
 
 if (currentBg.hasBackground) {
   // Remove existing background
-  await client.chat.removeBackground(chatGuid);
+  await sdk.chats.removeBackground(chatGuid);
   console.log('Removed old background');
 }
 
 // Set new background
 const newBgPath = path.join(__dirname, 'backgrounds', 'ocean.jpg');
-await client.chat.setBackground(chatGuid, {
+await sdk.chats.setBackground(chatGuid, {
   filePath: newBgPath
 });
 
 // Verify new background is set
-const updatedBg = await client.chat.getBackground(chatGuid);
+const updatedBg = await sdk.chats.getBackground(chatGuid);
 console.log('New background set:', updatedBg.hasBackground);
 ```

@@ -226,3 +226,75 @@ try {
 
 - [Send Attachment](/api/attachments/send-attachment) - Sending file attachments
 - [Attachments Guide](/guides/working-with-attachments) - Working with attachments
+
+---
+
+## getAttachment
+
+Get metadata for a specific attachment.
+
+### Method Signature
+
+```typescript
+await sdk.attachments.getAttachment(guid: string): Promise<AttachmentResponse>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  Unique identifier of the attachment
+</ParamField>
+
+### Response
+
+<ResponseField name="guid" type="string">
+  Unique attachment identifier
+</ResponseField>
+
+<ResponseField name="transferName" type="string">
+  Original file name
+</ResponseField>
+
+<ResponseField name="totalBytes" type="number">
+  File size in bytes
+</ResponseField>
+
+<ResponseField name="mimeType" type="string">
+  MIME type of the file
+</ResponseField>
+
+<ResponseField name="uti" type="string">
+  Uniform Type Identifier
+</ResponseField>
+
+### Example
+
+```typescript
+const attachment = await sdk.attachments.getAttachment("attachment-guid");
+console.log(`File: ${attachment.transferName}`);
+console.log(`Size: ${attachment.totalBytes} bytes`);
+console.log(`Type: ${attachment.mimeType}`);
+```
+
+---
+
+## getAttachmentCount
+
+Get the total count of attachments.
+
+### Method Signature
+
+```typescript
+await sdk.attachments.getAttachmentCount(): Promise<number>
+```
+
+### Returns
+
+Returns the total number of attachments.
+
+### Example
+
+```typescript
+const totalAttachments = await sdk.attachments.getAttachmentCount();
+console.log(`Total attachments: ${totalAttachments}`);
+```

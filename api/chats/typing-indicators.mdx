@@ -8,7 +8,7 @@ description: "Control typing indicator status in chats"
 Show typing indicator in a chat to let participants know you're composing a message.
 
 ```typescript
-await client.chat.startTyping(chatGuid): Promise<void>
+await sdk.chats.startTyping(chatGuid): Promise<void>
 ```
 
 ### Parameters
@@ -24,27 +24,27 @@ Returns a Promise that resolves when the typing indicator is activated.
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Start typing indicator
-await client.chat.startTyping(chatGuid);
+await sdk.chats.startTyping(chatGuid);
 console.log('Typing indicator started');
 
 // Simulate composing a message
 await new Promise(resolve => setTimeout(resolve, 3000));
 
 // Send the message
-await client.message.send({
+await sdk.messages.send({
   chatGuid,
   message: 'Hello!'
 });
 
 // Stop typing indicator
-await client.chat.stopTyping(chatGuid);
+await sdk.chats.stopTyping(chatGuid);
 ```
 
 ---
@@ -54,7 +54,7 @@ await client.chat.stopTyping(chatGuid);
 Hide typing indicator in a chat.
 
 ```typescript
-await client.chat.stopTyping(chatGuid): Promise<void>
+await sdk.chats.stopTyping(chatGuid): Promise<void>
 ```
 
 ### Parameters
@@ -70,23 +70,23 @@ Returns a Promise that resolves when the typing indicator is deactivated.
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Stop typing indicator
-await client.chat.stopTyping(chatGuid);
+await sdk.chats.stopTyping(chatGuid);
 console.log('Typing indicator stopped');
 ```
 
 ### Advanced Usage
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
@@ -94,20 +94,20 @@ const chatGuid = 'iMessage;+;chat123456';
 async function composeMessage(chatGuid: string, messageText: string) {
   try {
     // Start typing indicator
-    await client.chat.startTyping(chatGuid);
+    await sdk.chats.startTyping(chatGuid);
     
     // Simulate message composition time
     const typingDelay = messageText.length * 50; // 50ms per character
     await new Promise(resolve => setTimeout(resolve, typingDelay));
     
     // Send message
-    await client.message.send({
+    await sdk.messages.send({
       chatGuid,
       message: messageText
     });
   } finally {
     // Always stop typing indicator, even if sending fails
-    await client.chat.stopTyping(chatGuid);
+    await sdk.chats.stopTyping(chatGuid);
   }
 }
 
@@ -120,7 +120,7 @@ let typingTimeout: NodeJS.Timeout | null = null;
 function handleUserTyping(chatGuid: string, isTyping: boolean) {
   if (isTyping) {
     // User started typing
-    client.chat.startTyping(chatGuid);
+    sdk.chats.startTyping(chatGuid);
     
     // Reset timeout
     if (typingTimeout) {
@@ -129,14 +129,14 @@ function handleUserTyping(chatGuid: string, isTyping: boolean) {
     
     // Auto-stop typing after 5 seconds of inactivity
     typingTimeout = setTimeout(() => {
-      client.chat.stopTyping(chatGuid);
+      sdk.chats.stopTyping(chatGuid);
     }, 5000);
   } else {
     // User stopped typing
     if (typingTimeout) {
       clearTimeout(typingTimeout);
     }
-    client.chat.stopTyping(chatGuid);
+    sdk.chats.stopTyping(chatGuid);
   }
 }
 

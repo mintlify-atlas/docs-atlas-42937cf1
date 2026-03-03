@@ -58,7 +58,7 @@ Casts a vote for a specific option in a poll.
 ### Example
 
 ```typescript
-import { parsePollDefinition } from "advanced-imessage-kit";
+import { parsePollDefinition } from "@photon-ai/advanced-imessage-kit";
 
 // Create a poll
 const poll = await sdk.polls.create({
@@ -220,7 +220,7 @@ console.log(`Option added: ${editMessage.guid}`);
 ## Complete Example
 
 ```typescript
-import { iMessageSDK, parsePollDefinition } from "advanced-imessage-kit";
+import { iMessageSDK, parsePollDefinition } from "@photon-ai/advanced-imessage-kit";
 
 const sdk = new iMessageSDK({ serverUrl: "http://localhost:3000" });
 const chatGuid = "iMessage;-;+1234567890";

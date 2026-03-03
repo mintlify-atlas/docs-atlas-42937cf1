@@ -30,7 +30,7 @@ Determines if a message is a poll message (either poll definition or vote).
 ### Example
 
 ```typescript
-import { isPollMessage } from "advanced-imessage-kit";
+import { isPollMessage } from "@photon-ai/advanced-imessage-kit";
 
 sdk.on("message", (message) => {
   if (isPollMessage(message)) {
@@ -64,7 +64,7 @@ Determines if a message is a poll vote (as opposed to the original poll definiti
 ### Example
 
 ```typescript
-import { isPollMessage, isPollVote } from "advanced-imessage-kit";
+import { isPollMessage, isPollVote } from "@photon-ai/advanced-imessage-kit";
 
 sdk.on("message", (message) => {
   if (isPollMessage(message)) {
@@ -138,7 +138,7 @@ Extracts the poll definition from a poll message, including title, creator, and 
 ### Example
 
 ```typescript
-import { parsePollDefinition, isPollVote } from "advanced-imessage-kit";
+import { parsePollDefinition, isPollVote } from "@photon-ai/advanced-imessage-kit";
 
 sdk.on("message", (message) => {
   if (isPollMessage(message) && !isPollVote(message)) {
@@ -203,7 +203,7 @@ Extracts vote information from a poll vote message.
 ### Example
 
 ```typescript
-import { parsePollVotes, isPollVote, getOptionTextById } from "advanced-imessage-kit";
+import { parsePollVotes, isPollVote, getOptionTextById } from "@photon-ai/advanced-imessage-kit";
 
 sdk.on("message", (message) => {
   if (isPollMessage(message) && isPollVote(message)) {
@@ -232,7 +232,7 @@ import {
   isPollVote,
   parsePollDefinition,
   parsePollVotes,
-} from "advanced-imessage-kit";
+} from "@photon-ai/advanced-imessage-kit";
 
 const sdk = new iMessageSDK({ serverUrl: "http://localhost:3000" });
 
@@ -287,7 +287,7 @@ await sdk.connect();
 ## Helper Constants
 
 ```typescript
-import { POLL_BALLOON_BUNDLE_ID } from "advanced-imessage-kit";
+import { POLL_BALLOON_BUNDLE_ID } from "@photon-ai/advanced-imessage-kit";
 
 console.log(POLL_BALLOON_BUNDLE_ID);
 // "com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:com.apple.messages.Polls"
@@ -306,3 +306,163 @@ The balloon bundle ID used to identify poll messages.
 - Poll data is automatically cached when parsed, making subsequent lookups faster
 - Option identifiers are required for voting and are unique to each poll option
 - All parsing functions safely handle invalid or malformed poll messages by returning `null`
+
+---
+
+## cachePoll
+
+Cache a parsed poll for later lookup by option ID.
+
+### Method Signature
+
+```typescript
+import { cachePoll, type ParsedPoll } from "@photon-ai/advanced-imessage-kit";
+
+cachePoll(messageGuid: string, poll: ParsedPoll): void
+```
+
+### Parameters
+
+<ParamField path="messageGuid" type="string" required>
+  GUID of the poll message
+</ParamField>
+
+<ParamField path="poll" type="ParsedPoll" required>
+  The parsed poll object to cache
+</ParamField>
+
+### Example
+
+```typescript
+import { parsePollDefinition, cachePoll } from "@photon-ai/advanced-imessage-kit";
+
+const pollData = parsePollDefinition(message);
+if (pollData) {
+  cachePoll(message.guid, pollData);
+}
+```
+
+<Note>
+Poll definitions are automatically cached when parsed. Manual caching is only needed for custom scenarios.
+</Note>
+
+---
+
+## getCachedPoll
+
+Retrieve a previously cached poll by message GUID.
+
+### Method Signature
+
+```typescript
+import { getCachedPoll, type ParsedPoll } from "@photon-ai/advanced-imessage-kit";
+
+getCachedPoll(messageGuid: string): ParsedPoll | null
+```
+
+### Parameters
+
+<ParamField path="messageGuid" type="string" required>
+  GUID of the poll message
+</ParamField>
+
+### Returns
+
+Returns the cached `ParsedPoll` object, or `null` if not found.
+
+### Example
+
+```typescript
+import { getCachedPoll } from "@photon-ai/advanced-imessage-kit";
+
+const poll = getCachedPoll("poll-message-guid");
+if (poll) {
+  console.log(`Poll: ${poll.title}`);
+  poll.options.forEach(opt => {
+    console.log(`- ${opt.text}`);
+  });
+}
+```
+
+---
+
+## getPollOneLiner
+
+Get a one-line summary of a poll message.
+
+### Method Signature
+
+```typescript
+import { getPollOneLiner } from "@photon-ai/advanced-imessage-kit";
+
+getPollOneLiner(message: MessageResponse): string | null
+```
+
+### Parameters
+
+<ParamField path="message" type="MessageResponse" required>
+  The poll message
+</ParamField>
+
+### Returns
+
+Returns a one-line string summary, or `null` if not a poll message.
+
+### Example
+
+```typescript
+import { isPollMessage, getPollOneLiner } from "@photon-ai/advanced-imessage-kit";
+
+sdk.on("new-message", (message) => {
+  if (isPollMessage(message)) {
+    const summary = getPollOneLiner(message);
+    console.log(summary);
+    // Output: "Poll: What's for dinner? (3 options)"
+  }
+});
+```
+
+---
+
+## getPollSummary
+
+Get a detailed summary of a poll message including options.
+
+### Method Signature
+
+```typescript
+import { getPollSummary } from "@photon-ai/advanced-imessage-kit";
+
+getPollSummary(message: MessageResponse): string | null
+```
+
+### Parameters
+
+<ParamField path="message" type="MessageResponse" required>
+  The poll message
+</ParamField>
+
+### Returns
+
+Returns a multi-line formatted summary, or `null` if not a poll message.
+
+### Example
+
+```typescript
+import { isPollMessage, getPollSummary } from "@photon-ai/advanced-imessage-kit";
+
+sdk.on("new-message", (message) => {
+  if (isPollMessage(message)) {
+    const summary = getPollSummary(message);
+    console.log(summary);
+    /* Output:
+    Poll: What's for dinner?
+    Created by: user@example.com
+    Options:
+      - Pizza
+      - Sushi
+      - Tacos
+    */
+  }
+});
+```

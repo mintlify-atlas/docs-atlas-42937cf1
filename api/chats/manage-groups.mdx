@@ -8,7 +8,7 @@ description: "Manage group chat settings and participants"
 Update chat properties such as display name.
 
 ```typescript
-await client.chat.updateChat(guid, options): Promise<ChatResponse>
+await sdk.chats.updateChat(guid, options): Promise<ChatResponse>
 ```
 
 ### Parameters
@@ -34,12 +34,12 @@ await client.chat.updateChat(guid, options): Promise<ChatResponse>
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 // Update group chat name
-const updatedChat = await client.chat.updateChat('iMessage;+;chat123456', {
+const updatedChat = await sdk.chats.updateChat('iMessage;+;chat123456', {
   displayName: 'Weekend Trip Planning'
 });
 
@@ -53,7 +53,7 @@ console.log(`Chat renamed to: ${updatedChat.displayName}`);
 Add a participant to a group chat.
 
 ```typescript
-await client.chat.addParticipant(chatGuid, address): Promise<ChatResponse>
+await sdk.chats.addParticipant(chatGuid, address): Promise<ChatResponse>
 ```
 
 ### Parameters
@@ -75,14 +75,14 @@ await client.chat.addParticipant(chatGuid, address): Promise<ChatResponse>
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Add participant by phone number
-const updatedChat = await client.chat.addParticipant(
+const updatedChat = await sdk.chats.addParticipant(
   chatGuid,
   '+1234567890'
 );
@@ -90,7 +90,7 @@ const updatedChat = await client.chat.addParticipant(
 console.log(`Participant added. Chat now has ${updatedChat.participants?.length} members`);
 
 // Add participant by email
-await client.chat.addParticipant(chatGuid, 'newperson@icloud.com');
+await sdk.chats.addParticipant(chatGuid, 'newperson@icloud.com');
 ```
 
 ---
@@ -100,7 +100,7 @@ await client.chat.addParticipant(chatGuid, 'newperson@icloud.com');
 Remove a participant from a group chat.
 
 ```typescript
-await client.chat.removeParticipant(chatGuid, address): Promise<ChatResponse>
+await sdk.chats.removeParticipant(chatGuid, address): Promise<ChatResponse>
 ```
 
 ### Parameters
@@ -122,14 +122,14 @@ await client.chat.removeParticipant(chatGuid, address): Promise<ChatResponse>
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Remove participant
-const updatedChat = await client.chat.removeParticipant(
+const updatedChat = await sdk.chats.removeParticipant(
   chatGuid,
   '+1234567890'
 );
@@ -144,7 +144,7 @@ console.log(`Participant removed. ${updatedChat.participants?.length} members re
 Leave a group chat.
 
 ```typescript
-await client.chat.leaveChat(guid): Promise<void>
+await sdk.chats.leaveChat(guid): Promise<void>
 ```
 
 ### Parameters
@@ -160,12 +160,12 @@ Returns a Promise that resolves when the operation completes.
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 // Leave a group chat
-await client.chat.leaveChat('iMessage;+;chat123456');
+await sdk.chats.leaveChat('iMessage;+;chat123456');
 console.log('Successfully left the chat');
 ```
 
@@ -176,7 +176,7 @@ console.log('Successfully left the chat');
 Set a custom icon/image for a group chat.
 
 ```typescript
-await client.chat.setGroupIcon(chatGuid, filePath): Promise<void>
+await sdk.chats.setGroupIcon(chatGuid, filePath): Promise<void>
 ```
 
 ### Parameters
@@ -196,16 +196,16 @@ Returns a Promise that resolves when the operation completes.
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 import path from 'path';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Set group icon from local file
 const iconPath = path.join(__dirname, 'images', 'group-icon.png');
-await client.chat.setGroupIcon(chatGuid, iconPath);
+await sdk.chats.setGroupIcon(chatGuid, iconPath);
 
 console.log('Group icon updated successfully');
 ```
@@ -217,7 +217,7 @@ console.log('Group icon updated successfully');
 Remove the custom icon from a group chat.
 
 ```typescript
-await client.chat.removeGroupIcon(chatGuid): Promise<void>
+await sdk.chats.removeGroupIcon(chatGuid): Promise<void>
 ```
 
 ### Parameters
@@ -233,11 +233,146 @@ Returns a Promise that resolves when the operation completes.
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 // Remove group icon
-await client.chat.removeGroupIcon('iMessage;+;chat123456');
+await sdk.chats.removeGroupIcon('iMessage;+;chat123456');
 console.log('Group icon removed');
+```
+---
+
+## deleteChat
+
+Delete a chat from your message history.
+
+### Method Signature
+
+```typescript
+await sdk.chats.deleteChat(guid: string): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  Unique identifier of the chat to delete
+</ParamField>
+
+### Example
+
+```typescript
+await sdk.chats.deleteChat("iMessage;-;+1234567890");
+console.log("Chat deleted from history");
+```
+
+<Warning>
+This only removes the chat from your local message database. It does not affect the chat for other participants.
+</Warning>
+
+---
+
+## markChatRead
+
+Mark a chat as read.
+
+### Method Signature
+
+```typescript
+await sdk.chats.markChatRead(guid: string): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  Unique identifier of the chat to mark as read
+</ParamField>
+
+### Example
+
+```typescript
+await sdk.chats.markChatRead("iMessage;-;+1234567890");
+```
+
+---
+
+## markChatUnread
+
+Mark a chat as unread.
+
+### Method Signature
+
+```typescript
+await sdk.chats.markChatUnread(guid: string): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  Unique identifier of the chat to mark as unread
+</ParamField>
+
+### Example
+
+```typescript
+await sdk.chats.markChatUnread("iMessage;-;+1234567890");
+```
+
+---
+
+## getGroupIcon
+
+Get the group icon image for a group chat.
+
+### Method Signature
+
+```typescript
+await sdk.chats.getGroupIcon(guid: string): Promise<Buffer>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  Unique identifier of the group chat
+</ParamField>
+
+### Returns
+
+Returns a `Buffer` containing the group icon image data.
+
+### Example
+
+```typescript
+import fs from 'fs';
+
+const iconBuffer = await sdk.chats.getGroupIcon("iMessage;+;chat123456");
+
+// Save to file
+fs.writeFileSync('group-icon.png', iconBuffer);
+
+// Or convert to base64
+const base64Icon = iconBuffer.toString('base64');
+```
+
+---
+
+## getChatCount
+
+Get the total count of chats.
+
+### Method Signature
+
+```typescript
+await sdk.chats.getChatCount(): Promise<number>
+```
+
+### Returns
+
+Returns the total number of chats.
+
+### Example
+
+```typescript
+const totalChats = await sdk.chats.getChatCount();
+console.log(`Total chats: ${totalChats}`);
 ```

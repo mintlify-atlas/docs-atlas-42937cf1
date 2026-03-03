@@ -8,7 +8,7 @@ description: "Retrieve and query chat conversations"
 Retrieve a list of chat conversations with optional filtering and pagination.
 
 ```typescript
-await client.chat.getChats(options?): Promise<ChatResponse[]>
+await sdk.chats.getChats(options?): Promise<ChatResponse[]>
 ```
 
 ### Parameters
@@ -98,12 +98,12 @@ await client.chat.getChats(options?): Promise<ChatResponse[]>
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 // Get all chats with last message
-const chats = await client.chat.getChats({
+const chats = await sdk.chats.getChats({
   withLastMessage: true,
   limit: 50
 });
@@ -114,18 +114,18 @@ chats.forEach(chat => {
 });
 
 // Get chats with pagination
-const page1 = await client.chat.getChats({
+const page1 = await sdk.chats.getChats({
   offset: 0,
   limit: 20
 });
 
-const page2 = await client.chat.getChats({
+const page2 = await sdk.chats.getChats({
   offset: 20,
   limit: 20
 });
 
 // Include archived chats
-const allChats = await client.chat.getChats({
+const allChats = await sdk.chats.getChats({
   withArchived: true
 });
 ```
@@ -137,7 +137,7 @@ const allChats = await client.chat.getChats({
 Get the total count of chats with optional breakdown.
 
 ```typescript
-await client.chat.getChatCount(options?): Promise<{ total: number; breakdown: Record<string, number> }>
+await sdk.chats.getChatCount(options?): Promise<{ total: number; breakdown: Record<string, number> }>
 ```
 
 ### Parameters
@@ -167,17 +167,17 @@ await client.chat.getChatCount(options?): Promise<{ total: number; breakdown: Re
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 // Get total chat count
-const count = await client.chat.getChatCount();
+const count = await sdk.chats.getChatCount();
 console.log(`Total chats: ${count.total}`);
 console.log('Breakdown:', count.breakdown);
 
 // Include archived chats in count
-const fullCount = await client.chat.getChatCount({
+const fullCount = await sdk.chats.getChatCount({
   includeArchived: true
 });
 console.log(`Total chats (including archived): ${fullCount.total}`);

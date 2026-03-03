@@ -120,7 +120,7 @@ const sdk = AdvancedIMessageKit.getInstance({
 Connect to a local server without authentication:
 
 ```typescript
-import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+import { AdvancedIMessageKit } from '@photon-ai/advanced-imessage-kit';
 
 const sdk = AdvancedIMessageKit.getInstance();
 await sdk.connect();
@@ -137,7 +137,7 @@ This uses all default values:
 Secure configuration for production use:
 
 ```typescript
-import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+import { AdvancedIMessageKit } from '@photon-ai/advanced-imessage-kit';
 
 const sdk = AdvancedIMessageKit.getInstance({
   serverUrl: process.env.BLUEBUBBLES_SERVER_URL,
@@ -154,7 +154,7 @@ await sdk.connect();
 Verbose logging for debugging:
 
 ```typescript
-import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+import { AdvancedIMessageKit } from '@photon-ai/advanced-imessage-kit';
 
 const sdk = AdvancedIMessageKit.getInstance({
   serverUrl: 'http://localhost:1234',
@@ -171,7 +171,7 @@ await sdk.connect();
 Connect to a remote BlueBubbles server:
 
 ```typescript
-import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+import { AdvancedIMessageKit } from '@photon-ai/advanced-imessage-kit';
 
 const sdk = AdvancedIMessageKit.getInstance({
   serverUrl: 'https://your-server.example.com',
@@ -195,7 +195,7 @@ LOG_LEVEL=info
 ```
 
 ```typescript
-import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+import { AdvancedIMessageKit } from '@photon-ai/advanced-imessage-kit';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -216,7 +216,7 @@ await sdk.connect();
 The configuration is fully typed for TypeScript users:
 
 ```typescript
-import type { ClientConfig } from 'advanced-imessage-kit';
+import type { ClientConfig } from '@photon-ai/advanced-imessage-kit';
 
 // Type-safe configuration
 const config: ClientConfig = {

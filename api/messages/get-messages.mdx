@@ -371,3 +371,173 @@ All methods (except `getMessageCount`) return `MessageResponse` objects with the
 - [sendMessage](/api/messages/send-message) - Send a new message
 - [editMessage](/api/messages/edit-message) - Edit an existing message
 - [unsendMessage](/api/messages/unsend-message) - Unsend a message
+---
+
+## getUpdatedMessageCount
+
+Get the count of messages that have been updated (edited, reacted to, etc.).
+
+### Method Signature
+
+```typescript
+await sdk.messages.getUpdatedMessageCount(options?: {
+  after?: number;
+  before?: number;
+  chatGuid?: string;
+  minRowId?: number;
+  maxRowId?: number;
+}): Promise<number>
+```
+
+### Parameters
+
+<ParamField path="after" type="number">
+  Count updated messages after this timestamp
+</ParamField>
+
+<ParamField path="before" type="number">
+  Count updated messages before this timestamp
+</ParamField>
+
+<ParamField path="chatGuid" type="string">
+  Count updated messages in a specific chat
+</ParamField>
+
+<ParamField path="minRowId" type="number">
+  Minimum database row ID
+</ParamField>
+
+<ParamField path="maxRowId" type="number">
+  Maximum database row ID
+</ParamField>
+
+### Example
+
+```typescript
+const updatedCount = await sdk.messages.getUpdatedMessageCount({
+  after: Date.now() - (24 * 60 * 60 * 1000)
+});
+console.log(`Messages updated in last 24 hours: ${updatedCount}`);
+```
+
+---
+
+## getSentMessageCount
+
+Get the count of messages you have sent.
+
+### Method Signature
+
+```typescript
+await sdk.messages.getSentMessageCount(options?: {
+  after?: number;
+  before?: number;
+  chatGuid?: string;
+  minRowId?: number;
+  maxRowId?: number;
+}): Promise<number>
+```
+
+### Parameters
+
+<ParamField path="after" type="number">
+  Count sent messages after this timestamp
+</ParamField>
+
+<ParamField path="before" type="number">
+  Count sent messages before this timestamp
+</ParamField>
+
+<ParamField path="chatGuid" type="string">
+  Count sent messages in a specific chat
+</ParamField>
+
+<ParamField path="minRowId" type="number">
+  Minimum database row ID
+</ParamField>
+
+<ParamField path="maxRowId" type="number">
+  Maximum database row ID
+</ParamField>
+
+### Example
+
+```typescript
+const sentCount = await sdk.messages.getSentMessageCount();
+console.log(`Total messages sent: ${sentCount}`);
+
+// Count sent messages in a specific chat
+const chatSentCount = await sdk.messages.getSentMessageCount({
+  chatGuid: "iMessage;-;user@example.com"
+});
+```
+
+---
+
+## notifyMessage
+
+Trigger a notification for a specific message.
+
+### Method Signature
+
+```typescript
+await sdk.messages.notifyMessage(guid: string): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  The unique identifier of the message to notify
+</ParamField>
+
+### Example
+
+```typescript
+await sdk.messages.notifyMessage("message-guid-here");
+```
+
+---
+
+## getEmbeddedMedia
+
+Get embedded media (rich link preview, inline content) for a message.
+
+### Method Signature
+
+```typescript
+await sdk.messages.getEmbeddedMedia(guid: string): Promise<{
+  path?: string;
+  data?: string;
+}>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  The unique identifier of the message
+</ParamField>
+
+### Response
+
+<ResponseField name="path" type="string">
+  File path to the embedded media (if stored as file)
+</ResponseField>
+
+<ResponseField name="data" type="string">
+  Base64-encoded embedded media data (if stored inline)
+</ResponseField>
+
+### Example
+
+```typescript
+const media = await sdk.messages.getEmbeddedMedia("message-guid");
+
+if (media.path) {
+  console.log(`Media file: ${media.path}`);
+}
+
+if (media.data) {
+  // Handle base64 data
+  const buffer = Buffer.from(media.data, 'base64');
+}
+```

@@ -65,7 +65,7 @@ Create a poll with multiple choice options.
 ## Complete Poll Creation Example
 
 ```typescript
-import { AdvancedIMessageKit } from "advanced-imessage-kit";
+import { AdvancedIMessageKit } from "@photon-ai/advanced-imessage-kit";
 import { parsePollDefinition } from "advanced-imessage-kit/lib/poll-utils";
 
 const sdk = new AdvancedIMessageKit({
@@ -164,7 +164,7 @@ Cast your vote on a poll option.
 ## Complete Voting Example
 
 ```typescript
-import { AdvancedIMessageKit } from "advanced-imessage-kit";
+import { AdvancedIMessageKit } from "@photon-ai/advanced-imessage-kit";
 import { parsePollDefinition } from "advanced-imessage-kit/lib/poll-utils";
 
 const sdk = new AdvancedIMessageKit({
@@ -385,7 +385,7 @@ sdk.on("new-message", (message) => {
 ## Complete Poll Monitoring Example
 
 ```typescript
-import { AdvancedIMessageKit } from "advanced-imessage-kit";
+import { AdvancedIMessageKit } from "@photon-ai/advanced-imessage-kit";
 import {
   isPollMessage,
   isPollVote,

@@ -1,0 +1,167 @@
+---
+title: Logging Utilities
+description: Control SDK logging behavior and retrieve logger instances
+icon: "file-lines"
+---
+
+## Overview
+
+Advanced iMessage Kit provides logging utilities to control log levels and file output across the SDK.
+
+## getLogger
+
+Get a logger instance for a specific tag.
+
+### Method Signature
+
+```typescript
+import { getLogger } from "@photon-ai/advanced-imessage-kit";
+
+const logger = getLogger(tag: string)
+```
+
+### Parameters
+
+<ParamField path="tag" type="string" required>
+  Tag name for the logger (e.g., "MyApp", "ChatHandler")
+</ParamField>
+
+### Returns
+
+Returns a logger instance with methods: `debug()`, `info()`, `warn()`, `error()`.
+
+### Example
+
+```typescript
+import { getLogger } from "@photon-ai/advanced-imessage-kit";
+
+const logger = getLogger("MyApp");
+
+logger.info("Application started");
+logger.debug("Debug information", { userId: 123 });
+logger.warn("Warning message");
+logger.error("Error occurred", error);
+```
+
+---
+
+## setGlobalLogLevel
+
+Set the log level for all SDK loggers.
+
+### Method Signature
+
+```typescript
+import { setGlobalLogLevel } from "@photon-ai/advanced-imessage-kit";
+
+setGlobalLogLevel(level: "debug" | "info" | "warn" | "error"): void
+```
+
+### Parameters
+
+<ParamField path="level" type="'debug' | 'info' | 'warn' | 'error'" required>
+  The minimum log level to output
+  
+  - `"debug"` - Show all logs including debug messages
+  - `"info"` - Show info, warn, and error logs (default)
+  - `"warn"` - Show only warnings and errors
+  - `"error"` - Show only errors
+</ParamField>
+
+### Example
+
+```typescript
+import { setGlobalLogLevel } from "@photon-ai/advanced-imessage-kit";
+
+// Set to debug for development
+setGlobalLogLevel("debug");
+
+// Set to error for production
+setGlobalLogLevel("error");
+```
+
+---
+
+## setGlobalLogToFile
+
+Enable or disable logging to file.
+
+### Method Signature
+
+```typescript
+import { setGlobalLogToFile } from "@photon-ai/advanced-imessage-kit";
+
+setGlobalLogToFile(logToFile: boolean): void
+```
+
+### Parameters
+
+<ParamField path="logToFile" type="boolean" required>
+  Whether to write logs to file
+</ParamField>
+
+### Log File Location
+
+When enabled, logs are written to:
+- **macOS**: `~/Library/Logs/AdvancedIMessageKit/`
+
+### Example
+
+```typescript
+import { setGlobalLogToFile } from "@photon-ai/advanced-imessage-kit";
+
+// Disable file logging
+setGlobalLogToFile(false);
+
+// Enable file logging (default)
+setGlobalLogToFile(true);
+```
+
+---
+
+## Configuration via ClientConfig
+
+You can also control logging through the SDK configuration:
+
+```typescript
+import { SDK } from "@photon-ai/advanced-imessage-kit";
+
+const sdk = SDK({
+  logLevel: "warn",      // Set log level
+  logToFile: false       // Disable file logging
+});
+```
+
+## Complete Example
+
+```typescript
+import { SDK, getLogger, setGlobalLogLevel, setGlobalLogToFile } from "@photon-ai/advanced-imessage-kit";
+
+// Configure logging before SDK initialization
+setGlobalLogLevel("debug");
+setGlobalLogToFile(true);
+
+const sdk = SDK({
+  serverUrl: "http://localhost:1234"
+});
+
+// Create custom logger
+const appLogger = getLogger("ChatBot");
+
+sdk.on("ready", () => {
+  appLogger.info("SDK connected successfully");
+});
+
+sdk.on("new-message", (message) => {
+  appLogger.debug("Received message", {
+    from: message.handle?.address,
+    text: message.text
+  });
+});
+
+await sdk.connect();
+```
+
+## Related
+
+- [ClientConfig](/api/client/configuration) - SDK configuration options

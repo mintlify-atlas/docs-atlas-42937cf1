@@ -8,7 +8,7 @@ description: "Retrieve individual chat details and messages"
 Retrieve a specific chat by its GUID with optional related data.
 
 ```typescript
-await client.chat.getChat(guid, options?): Promise<ChatResponse>
+await sdk.chats.getChat(guid, options?): Promise<ChatResponse>
 ```
 
 ### Parameters
@@ -86,22 +86,22 @@ await client.chat.getChat(guid, options?): Promise<ChatResponse>
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 // Get basic chat info
-const chat = await client.chat.getChat('iMessage;+;chat123456');
+const chat = await sdk.chats.getChat('iMessage;+;chat123456');
 console.log(`Chat name: ${chat.displayName}`);
 
 // Get chat with participants
-const chatWithParticipants = await client.chat.getChat('iMessage;+;chat123456', {
+const chatWithParticipants = await sdk.chats.getChat('iMessage;+;chat123456', {
   with: ['participants']
 });
 console.log('Participants:', chatWithParticipants.participants);
 
 // Get chat with participants and messages
-const fullChat = await client.chat.getChat('iMessage;+;chat123456', {
+const fullChat = await sdk.chats.getChat('iMessage;+;chat123456', {
   with: ['participants', 'messages']
 });
 console.log(`Chat has ${fullChat.messages?.length} messages`);
@@ -114,7 +114,7 @@ console.log(`Chat has ${fullChat.messages?.length} messages`);
 Retrieve messages from a specific chat with filtering and pagination options.
 
 ```typescript
-await client.chat.getChatMessages(chatGuid, options?): Promise<MessageResponse[]>
+await sdk.chats.getChatMessages(chatGuid, options?): Promise<MessageResponse[]>
 ```
 
 ### Parameters
@@ -160,20 +160,20 @@ await client.chat.getChatMessages(chatGuid, options?): Promise<MessageResponse[]
 ### Example
 
 ```typescript
-import { iMessageKit } from 'advanced-imessage-kit';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+const sdk = SDK({ serverUrl: 'http://localhost:1234' });
 
 const chatGuid = 'iMessage;+;chat123456';
 
 // Get latest 50 messages
-const recentMessages = await client.chat.getChatMessages(chatGuid, {
+const recentMessages = await sdk.chats.getChatMessages(chatGuid, {
   limit: 50,
   sort: 'DESC'
 });
 
 // Get messages with pagination
-const page1 = await client.chat.getChatMessages(chatGuid, {
+const page1 = await sdk.chats.getChatMessages(chatGuid, {
   offset: 0,
   limit: 25,
   sort: 'ASC'
@@ -181,13 +181,13 @@ const page1 = await client.chat.getChatMessages(chatGuid, {
 
 // Get messages in a date range
 const lastWeek = Date.now() - (7 * 24 * 60 * 60 * 1000);
-const messages = await client.chat.getChatMessages(chatGuid, {
+const messages = await sdk.chats.getChatMessages(chatGuid, {
   after: lastWeek,
   sort: 'DESC'
 });
 
 // Get messages with attachments
-const messagesWithAttachments = await client.chat.getChatMessages(chatGuid, {
+const messagesWithAttachments = await sdk.chats.getChatMessages(chatGuid, {
   with: ['attachments'],
   limit: 100
 });

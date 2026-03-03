@@ -1,0 +1,59 @@
+---
+title: Create FaceTime Link
+description: Create FaceTime video call links
+icon: "video"
+---
+
+## createFaceTimeLink
+
+Create a FaceTime link that can be shared with others to join a video call.
+
+### Method Signature
+
+```typescript
+await sdk.facetime.createFaceTimeLink(): Promise<string>
+```
+
+### Returns
+
+Returns a FaceTime link URL as a string.
+
+### Example
+
+```typescript
+const faceTimeLink = await sdk.facetime.createFaceTimeLink();
+
+console.log(`Join the call: ${faceTimeLink}`);
+
+// Share the link in a message
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: `Let's video chat! ${faceTimeLink}`
+});
+```
+
+### Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Quick Video Calls" icon="phone">
+    Generate FaceTime links on-demand for instant video conversations
+  </Card>
+  <Card title="Meeting Invitations" icon="calendar">
+    Send FaceTime links in advance for scheduled meetings
+  </Card>
+  <Card title="Group Calls" icon="users">
+    Create links for group video chats with multiple participants
+  </Card>
+  <Card title="Customer Support" icon="headset">
+    Provide video call links for visual customer assistance
+  </Card>
+</CardGroup>
+
+<Note>
+FaceTime links are compatible with iOS 15+, iPadOS 15+, and macOS 12+ devices. Recipients can join calls from compatible Apple devices using the link.
+</Note>
+
+## Related Methods
+
+- [Send Messages](/api/messages/send-message) - Share FaceTime links via iMessage
+- [Group Events](/api/events/group-events) - Listen for FaceTime and other group events

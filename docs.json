@@ -121,6 +121,12 @@
             ]
           },
           {
+            "group": "FaceTime",
+            "pages": [
+              "api/facetime/create-link"
+            ]
+          },
+          {
             "group": "iCloud & Find My",
             "pages": [
               "api/icloud/find-my-friends"
@@ -140,6 +146,12 @@
               "api/events/chat-events",
               "api/events/group-events",
               "api/events/typing-events"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/utilities/logging"
             ]
           }
         ]
