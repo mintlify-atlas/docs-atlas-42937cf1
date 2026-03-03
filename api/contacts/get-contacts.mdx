@@ -1,0 +1,70 @@
+---
+title: 'Get contacts'
+description: 'Retrieve contacts and contact cards from iCloud'
+keywords: ['contacts', 'getContacts', 'getContactCard', 'iCloud', 'address']
+---
+
+## getContacts()
+
+Retrieves all contacts from the iMessage server.
+
+### Returns
+
+<ResponseField name="contacts" type="array" required>
+  Array of contact objects from the server.
+</ResponseField>
+
+### Example
+
+```typescript
+const contacts = await client.contact.getContacts();
+console.log(`Found ${contacts.length} contacts`);
+```
+
+<Tip>This method returns all available contacts. Use this to build a contact list or lookup contact information.</Tip>
+
+---
+
+## getContactCard()
+
+Retrieves a contact card from iCloud for a specific address.
+
+### Parameters
+
+<ParamField path="address" type="string" required>
+  The email address or phone number to look up in iCloud contacts.
+</ParamField>
+
+### Returns
+
+<ResponseField name="contactCard" type="object" required>
+  Contact card data from iCloud containing the contact's information.
+</ResponseField>
+
+### Example
+
+```typescript
+const contactCard = await client.contact.getContactCard('+1234567890');
+console.log('Contact name:', contactCard.name);
+
+// Also works with email addresses
+const emailContact = await client.contact.getContactCard('user@example.com');
+```
+
+<Info>This method queries iCloud directly, so the address must be associated with an iCloud account.</Info>
+
+### Use cases
+
+- Look up contact details before sending a message
+- Verify contact information exists in iCloud
+- Retrieve contact metadata for display purposes
+
+### Error handling
+
+```typescript
+try {
+  const contactCard = await client.contact.getContactCard('unknown@example.com');
+} catch (error) {
+  console.error('Contact not found or iCloud query failed:', error);
+}
+```

@@ -1,0 +1,196 @@
+---
+title: "Get Chat"
+description: "Retrieve individual chat details and messages"
+---
+
+## getChat
+
+Retrieve a specific chat by its GUID with optional related data.
+
+```typescript
+await client.chat.getChat(guid, options?): Promise<ChatResponse>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  Unique identifier of the chat to retrieve
+</ParamField>
+
+<ParamField path="options" type="object" optional>
+  Optional configuration for what to include
+  
+  <ParamField path="with" type="string[]" optional>
+    Array of related data to include (e.g., ['participants', 'messages'])
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="chat" type="ChatResponse">
+  Chat object with requested data
+  
+  <ResponseField name="originalROWID" type="number">
+    Database row ID
+  </ResponseField>
+  
+  <ResponseField name="guid" type="string">
+    Unique identifier for the chat
+  </ResponseField>
+  
+  <ResponseField name="chatIdentifier" type="string">
+    Chat identifier string
+  </ResponseField>
+  
+  <ResponseField name="displayName" type="string">
+    Display name of the chat
+  </ResponseField>
+  
+  <ResponseField name="style" type="number">
+    Chat style (0 = individual, 43 = group)
+  </ResponseField>
+  
+  <ResponseField name="isArchived" type="boolean">
+    Whether the chat is archived
+  </ResponseField>
+  
+  <ResponseField name="isFiltered" type="boolean" optional>
+    Whether the chat is filtered
+  </ResponseField>
+  
+  <ResponseField name="groupId" type="string" optional>
+    Group identifier for group chats
+  </ResponseField>
+  
+  <ResponseField name="participants" type="HandleResponse[]" optional>
+    Array of participant handles (if requested with 'participants')
+  </ResponseField>
+  
+  <ResponseField name="messages" type="MessageResponse[]" optional>
+    Array of messages (if requested with 'messages')
+  </ResponseField>
+  
+  <ResponseField name="lastMessage" type="MessageResponse" optional>
+    Most recent message in the chat
+  </ResponseField>
+  
+  <ResponseField name="lastAddressedHandle" type="string | null" optional>
+    Last addressed handle in the chat
+  </ResponseField>
+  
+  <ResponseField name="properties" type="object[] | null" optional>
+    Additional chat properties
+  </ResponseField>
+</ResponseField>
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+// Get basic chat info
+const chat = await client.chat.getChat('iMessage;+;chat123456');
+console.log(`Chat name: ${chat.displayName}`);
+
+// Get chat with participants
+const chatWithParticipants = await client.chat.getChat('iMessage;+;chat123456', {
+  with: ['participants']
+});
+console.log('Participants:', chatWithParticipants.participants);
+
+// Get chat with participants and messages
+const fullChat = await client.chat.getChat('iMessage;+;chat123456', {
+  with: ['participants', 'messages']
+});
+console.log(`Chat has ${fullChat.messages?.length} messages`);
+```
+
+---
+
+## getChatMessages
+
+Retrieve messages from a specific chat with filtering and pagination options.
+
+```typescript
+await client.chat.getChatMessages(chatGuid, options?): Promise<MessageResponse[]>
+```
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  Unique identifier of the chat
+</ParamField>
+
+<ParamField path="options" type="object" optional>
+  Optional configuration for querying messages
+  
+  <ParamField path="offset" type="number" optional>
+    Number of messages to skip for pagination
+  </ParamField>
+  
+  <ParamField path="limit" type="number" optional>
+    Maximum number of messages to return
+  </ParamField>
+  
+  <ParamField path="sort" type="'ASC' | 'DESC'" optional>
+    Sort order for messages (ascending or descending by date)
+  </ParamField>
+  
+  <ParamField path="before" type="number" optional>
+    Only return messages before this timestamp (milliseconds)
+  </ParamField>
+  
+  <ParamField path="after" type="number" optional>
+    Only return messages after this timestamp (milliseconds)
+  </ParamField>
+  
+  <ParamField path="with" type="string[]" optional>
+    Array of related data to include (e.g., ['attachments', 'handle'])
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="messages" type="MessageResponse[]">
+  Array of message objects
+</ResponseField>
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+const chatGuid = 'iMessage;+;chat123456';
+
+// Get latest 50 messages
+const recentMessages = await client.chat.getChatMessages(chatGuid, {
+  limit: 50,
+  sort: 'DESC'
+});
+
+// Get messages with pagination
+const page1 = await client.chat.getChatMessages(chatGuid, {
+  offset: 0,
+  limit: 25,
+  sort: 'ASC'
+});
+
+// Get messages in a date range
+const lastWeek = Date.now() - (7 * 24 * 60 * 60 * 1000);
+const messages = await client.chat.getChatMessages(chatGuid, {
+  after: lastWeek,
+  sort: 'DESC'
+});
+
+// Get messages with attachments
+const messagesWithAttachments = await client.chat.getChatMessages(chatGuid, {
+  with: ['attachments'],
+  limit: 100
+});
+
+console.log(`Retrieved ${messagesWithAttachments.length} messages`);
+```

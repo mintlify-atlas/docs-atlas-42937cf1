@@ -1,0 +1,182 @@
+---
+title: sendMessage
+description: Send a text message to a chat with optional effects and metadata
+---
+
+## Method Signature
+
+```typescript
+await sdk.messages.sendMessage(options: SendMessageOptions): Promise<MessageResponse>
+```
+
+Sends a text message to an iMessage or SMS chat. Supports message effects (confetti, fireworks, etc.), subjects, and rich links.
+
+<Note>
+If the chat doesn't exist, the SDK will automatically create it using the address extracted from `chatGuid`.
+</Note>
+
+## Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  The unique identifier for the chat. Format: `{service};-;{address}` or `{service};+;{participants}`
+  
+  Examples:
+  - `iMessage;-;user@example.com`
+  - `SMS;-;+11234567890`
+  - `iMessage;+;user1@example.com,user2@example.com` (group chat)
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  The text content of the message to send
+</ParamField>
+
+<ParamField path="tempGuid" type="string">
+  Temporary GUID for tracking the message before server confirmation. Auto-generated if not provided.
+</ParamField>
+
+<ParamField path="subject" type="string">
+  Subject line for the message (typically used in group messages)
+</ParamField>
+
+<ParamField path="effectId" type="string">
+  The effect to apply to the message. See [Message Effects](/api/messages/message-effects) for available effect IDs.
+  
+  Examples:
+  - `com.apple.messages.effect.CKConfettiEffect` (confetti)
+  - `com.apple.messages.effect.CKFireworksEffect` (fireworks)
+  - `com.apple.MobileSMS.expressivesend.loud` (loud)
+  
+  <Note>Effects require Private API to be enabled on the BlueBubbles server</Note>
+</ParamField>
+
+<ParamField path="selectedMessageGuid" type="string">
+  GUID of a message to reply to or reference
+</ParamField>
+
+<ParamField path="partIndex" type="number" default="0">
+  The part index for multi-part messages
+</ParamField>
+
+<ParamField path="richLink" type="boolean">
+  Whether to enable rich link previews for URLs in the message
+</ParamField>
+
+## Response
+
+Returns a `MessageResponse` object:
+
+<ResponseField name="guid" type="string">
+  Unique identifier for the sent message
+</ResponseField>
+
+<ResponseField name="text" type="string">
+  The message text content
+</ResponseField>
+
+<ResponseField name="dateCreated" type="number">
+  Timestamp (milliseconds since epoch) when the message was created
+</ResponseField>
+
+<ResponseField name="tempGuid" type="string">
+  The temporary GUID used for tracking
+</ResponseField>
+
+<ResponseField name="isFromMe" type="boolean">
+  Always `true` for sent messages
+</ResponseField>
+
+<ResponseField name="handle" type="HandleResponse | null">
+  The handle (contact) associated with the message
+</ResponseField>
+
+<ResponseField name="chats" type="ChatResponse[]">
+  Array of chats this message belongs to
+</ResponseField>
+
+<ResponseField name="attachments" type="AttachmentResponse[]">
+  Array of attachments (empty for text-only messages)
+</ResponseField>
+
+## Examples
+
+### Basic Text Message
+
+```typescript
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "Hello, world!"
+});
+
+console.log(`Sent message: ${message.guid}`);
+```
+
+### Message with Confetti Effect
+
+```typescript
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "Happy Birthday!",
+  effectId: "com.apple.messages.effect.CKConfettiEffect"
+});
+```
+
+### Message with Subject
+
+```typescript
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;+;user1@example.com,user2@example.com",
+  message: "Meeting notes from today",
+  subject: "Team Standup"
+});
+```
+
+### SMS Message
+
+```typescript
+const message = await sdk.messages.sendMessage({
+  chatGuid: "SMS;-;+11234567890",
+  message: "Hey! This is an SMS message."
+});
+```
+
+### Message with Custom Tracking
+
+```typescript
+import { randomUUID } from "crypto";
+
+const trackingId = randomUUID();
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "Tracked message",
+  tempGuid: trackingId
+});
+
+console.log(`Tracking ID: ${message.tempGuid}`);
+```
+
+## Error Handling
+
+```typescript
+try {
+  const message = await sdk.messages.sendMessage({
+    chatGuid: "iMessage;-;user@example.com",
+    message: "Test message"
+  });
+  console.log("Message sent successfully");
+} catch (error) {
+  if (error.response?.status === 400) {
+    console.error("Invalid chat GUID or message format");
+  } else if (error.response?.status === 500) {
+    console.error("Server error - check BlueBubbles connection");
+  } else {
+    console.error("Failed to send message:", error.message);
+  }
+}
+```
+
+## Related Methods
+
+- [editMessage](/api/messages/edit-message) - Edit a sent message
+- [unsendMessage](/api/messages/unsend-message) - Unsend (retract) a message
+- [sendReaction](/api/messages/send-reaction) - React to a message with a tapback
+- [Message Effects](/api/messages/message-effects) - Complete list of effect IDs

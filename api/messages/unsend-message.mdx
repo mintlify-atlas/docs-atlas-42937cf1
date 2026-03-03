@@ -1,0 +1,231 @@
+---
+title: unsendMessage
+description: Retract (unsend) a previously sent message
+---
+
+## Method Signature
+
+```typescript
+await sdk.messages.unsendMessage(options: {
+  messageGuid: string;
+  partIndex?: number;
+}): Promise<MessageResponse>
+```
+
+Retracts (unsends) a previously sent message, removing it from the recipient's device. This feature requires iOS 16+ / macOS Ventura+ and only works with iMessage (not SMS).
+
+<Warning>
+Message unsending only works with iMessage chats. SMS messages cannot be unsent.
+</Warning>
+
+## Parameters
+
+<ParamField path="messageGuid" type="string" required>
+  The unique identifier of the message to unsend
+</ParamField>
+
+<ParamField path="partIndex" type="number" default="0">
+  The part index for multi-part messages. Use `0` for single-part messages (most common).
+</ParamField>
+
+## Response
+
+Returns a `MessageResponse` object:
+
+<ResponseField name="guid" type="string">
+  The message GUID (unchanged)
+</ResponseField>
+
+<ResponseField name="dateRetracted" type="number | null">
+  Timestamp (milliseconds since epoch) when the message was retracted
+</ResponseField>
+
+<ResponseField name="text" type="string">
+  The original message text (before unsending)
+</ResponseField>
+
+<ResponseField name="isFromMe" type="boolean">
+  Whether the message was sent by you
+</ResponseField>
+
+## Examples
+
+### Basic Unsend
+
+```typescript
+const unsent = await sdk.messages.unsendMessage({
+  messageGuid: "iMessage;-;user@example.com;12345"
+});
+
+console.log(`Message unsent at: ${new Date(unsent.dateRetracted!)}`);
+```
+
+### Unsend Immediately After Sending
+
+```typescript
+// Send a message
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "Oops, wrong chat!"
+});
+
+// Immediately unsend it
+await sdk.messages.unsendMessage({
+  messageGuid: message.guid
+});
+
+console.log("Message unsent");
+```
+
+### Unsend with Timeout
+
+```typescript
+// Send a self-destructing message
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "This message will self-destruct in 10 seconds"
+});
+
+// Wait 10 seconds and unsend
+setTimeout(async () => {
+  await sdk.messages.unsendMessage({
+    messageGuid: message.guid
+  });
+  console.log("Message self-destructed");
+}, 10000);
+```
+
+### Unsend Based on Condition
+
+```typescript
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "Payment confirmed!"
+});
+
+// Later: if payment fails, unsend the message
+try {
+  await processPayment();
+} catch (error) {
+  console.log("Payment failed, unsending confirmation message");
+  await sdk.messages.unsendMessage({
+    messageGuid: message.guid
+  });
+  
+  // Send correction
+  await sdk.messages.sendMessage({
+    chatGuid: "iMessage;-;user@example.com",
+    message: "Payment failed. Please try again."
+  });
+}
+```
+
+### Check if Message Was Unsent
+
+```typescript
+const message = await sdk.messages.getMessage(
+  "iMessage;-;user@example.com;12345"
+);
+
+if (message.dateRetracted) {
+  const timeSinceRetraction = Date.now() - message.dateRetracted;
+  console.log(`Message was unsent ${Math.floor(timeSinceRetraction / 1000)} seconds ago`);
+} else {
+  console.log("Message is still active");
+}
+```
+
+### Bulk Unsend Recent Messages
+
+```typescript
+// Get recent messages from the last hour
+const oneHourAgo = Date.now() - (60 * 60 * 1000);
+const recentMessages = await sdk.messages.getMessages({
+  chatGuid: "iMessage;-;user@example.com",
+  after: oneHourAgo
+});
+
+// Unsend all messages sent by me
+for (const message of recentMessages) {
+  if (message.isFromMe && !message.dateRetracted) {
+    try {
+      await sdk.messages.unsendMessage({
+        messageGuid: message.guid
+      });
+      console.log(`Unsent: ${message.text}`);
+      
+      // Add delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (error) {
+      console.error(`Failed to unsend ${message.guid}:`, error.message);
+    }
+  }
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  await sdk.messages.unsendMessage({
+    messageGuid: "iMessage;-;user@example.com;12345"
+  });
+  console.log("Message unsent successfully");
+} catch (error) {
+  if (error.response?.status === 400) {
+    console.error("Invalid message GUID or format");
+  } else if (error.response?.status === 404) {
+    console.error("Message not found");
+  } else if (error.response?.data?.message?.includes("not supported")) {
+    console.error("Unsending not supported (SMS chat or old iOS version)");
+  } else if (error.response?.data?.message?.includes("already unsent")) {
+    console.error("Message was already unsent");
+  } else {
+    console.error("Failed to unsend message:", error.message);
+  }
+}
+```
+
+## Limitations
+
+<Note>
+  **Message unsending has several limitations:**
+  
+  - Only works with iMessage (not SMS/MMS)
+  - Requires iOS 16+ / macOS Ventura+ for both sender and recipient
+  - You can only unsend your own messages (`isFromMe: true`)
+  - There may be time limits on how long after sending you can unsend
+  - Recipients on older iOS/macOS versions may still see the original message
+  - If the recipient read the message before unsending, they saw the content
+</Note>
+
+## Unsend vs Delete
+
+**Unsending** (this method) removes the message from both your device and the recipient's device, as if it was never sent.
+
+**Deleting locally** (different operation) only removes the message from your device's view, but recipients still see it.
+
+```typescript
+// Unsend - removes from both sides
+await sdk.messages.unsendMessage({
+  messageGuid: message.guid
+});
+// Recipient's chat: message disappears
+
+// Local delete - only removes from your view (not available in SDK)
+// Recipient's chat: message remains
+```
+
+## What Recipients See
+
+### On iOS 16+ / macOS Ventura+
+Recipients see a placeholder indicating "[Sender] unsent a message" or similar system text.
+
+### On Older Versions
+Recipients on iOS 15 or earlier may still see the original message, as unsending is not supported.
+
+## Related Methods
+
+- [sendMessage](/api/messages/send-message) - Send a new message
+- [editMessage](/api/messages/edit-message) - Edit a message instead of unsending
+- [getMessage](/api/messages/get-messages#getmessage) - Check if a message was unsent

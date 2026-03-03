@@ -1,0 +1,333 @@
+---
+title: "AdvancedIMessageKit"
+description: "Main SDK client class for Advanced iMessage Kit"
+---
+
+## Overview
+
+The `AdvancedIMessageKit` class is the main SDK client that provides a complete interface for interacting with iMessage services. It implements a singleton pattern and manages WebSocket connections, HTTP requests, and event handling.
+
+## Class Definition
+
+```typescript
+class AdvancedIMessageKit extends EventEmitter implements TypedEventEmitter
+```
+
+## Static Methods
+
+### getInstance()
+
+Get or create the singleton SDK instance.
+
+```typescript
+static getInstance(config?: ClientConfig): AdvancedIMessageKit
+```
+
+<ParamField path="config" type="ClientConfig" optional>
+  Configuration options for the SDK client. See [ClientConfig](/api/client/configuration) for details.
+</ParamField>
+
+<ResponseField name="return" type="AdvancedIMessageKit">
+  The singleton SDK instance
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+
+const sdk = AdvancedIMessageKit.getInstance({
+  serverUrl: 'http://localhost:1234',
+  apiKey: 'your-api-key',
+  logLevel: 'info'
+});
+```
+
+## Properties
+
+### config
+
+The configuration object used to initialize the SDK.
+
+```typescript
+readonly config: ClientConfig
+```
+
+### logger
+
+Logger instance for the SDK.
+
+```typescript
+readonly logger: Logger
+```
+
+### http
+
+Axios HTTP client instance configured with base URL and API key headers.
+
+```typescript
+readonly http: AxiosInstance
+```
+
+### socket
+
+Socket.IO client instance for real-time event handling.
+
+```typescript
+readonly socket: Socket
+```
+
+### Module Properties
+
+The SDK provides access to various functional modules:
+
+```typescript
+readonly attachments: AttachmentModule
+readonly messages: MessageModule
+readonly chats: ChatModule
+readonly contacts: ContactModule
+readonly handles: HandleModule
+readonly facetime: FaceTimeModule
+readonly icloud: ICloudModule
+readonly polls: PollModule
+readonly scheduledMessages: ScheduledMessageModule
+readonly server: ServerModule
+```
+
+## Instance Methods
+
+### connect()
+
+Establish connection to the iMessage server via WebSocket.
+
+```typescript
+async connect(): Promise<void>
+```
+
+This method:
+- Connects to the server using Socket.IO
+- Sets up event listeners for server events
+- Handles authentication if an API key is provided
+- Emits a `ready` event when the connection is established and authenticated
+
+**Example:**
+
+```typescript
+const sdk = AdvancedIMessageKit.getInstance({
+  serverUrl: 'http://localhost:1234',
+  apiKey: 'your-api-key'
+});
+
+// Listen for ready event
+sdk.on('ready', () => {
+  console.log('SDK is ready!');
+});
+
+// Connect to server
+await sdk.connect();
+```
+
+### close()
+
+Disconnect from the iMessage server.
+
+```typescript
+async close(): Promise<void>
+```
+
+**Example:**
+
+```typescript
+await sdk.close();
+console.log('Disconnected from server');
+```
+
+### enqueueSend()
+
+Enqueue a send operation to ensure sequential delivery. All send operations (messages, attachments, stickers) use this method internally to guarantee order.
+
+```typescript
+public enqueueSend<T>(task: () => Promise<T>): Promise<T>
+```
+
+<ParamField path="task" type="() => Promise<T>" required>
+  An async function that performs the send operation
+</ParamField>
+
+<ResponseField name="return" type="Promise<T>">
+  Promise that resolves with the task result
+</ResponseField>
+
+**Example:**
+
+```typescript
+// Ensure messages are sent in order
+const result = await sdk.enqueueSend(async () => {
+  return await someAsyncSendOperation();
+});
+```
+
+### clearProcessedMessages()
+
+Clear processed message records to prevent memory leaks. The SDK maintains a cache of processed message GUIDs for deduplication.
+
+```typescript
+public clearProcessedMessages(maxSize?: number): void
+```
+
+<ParamField path="maxSize" type="number" default="1000">
+  Maximum number of messages to retain in the cache
+</ParamField>
+
+**Example:**
+
+```typescript
+// Clear old messages, keep the 500 most recent
+sdk.clearProcessedMessages(500);
+```
+
+### getProcessedMessageCount()
+
+Get the count of processed messages in the deduplication cache.
+
+```typescript
+public getProcessedMessageCount(): number
+```
+
+<ResponseField name="return" type="number">
+  Number of processed messages in cache
+</ResponseField>
+
+**Example:**
+
+```typescript
+const count = sdk.getProcessedMessageCount();
+console.log(`Tracking ${count} processed messages`);
+```
+
+## Event Methods
+
+The SDK extends `EventEmitter` with type-safe event handling:
+
+### on()
+
+Register an event listener.
+
+```typescript
+on<K extends keyof PhotonEventMap>(
+  event: K,
+  listener: (data: PhotonEventMap[K]) => void
+): this
+```
+
+### once()
+
+Register a one-time event listener.
+
+```typescript
+once<K extends keyof PhotonEventMap>(
+  event: K,
+  listener: (data: PhotonEventMap[K]) => void
+): this
+```
+
+### off()
+
+Remove an event listener.
+
+```typescript
+off<K extends keyof PhotonEventMap>(
+  event: K,
+  listener: (data: PhotonEventMap[K]) => void
+): this
+```
+
+### emit()
+
+Emit an event.
+
+```typescript
+emit<K extends keyof PhotonEventMap>(
+  event: K,
+  ...args: PhotonEventMap[K] extends undefined ? [] : [PhotonEventMap[K]]
+): boolean
+```
+
+**Example:**
+
+```typescript
+// Listen for new messages
+sdk.on('new-message', (message) => {
+  console.log('New message:', message);
+});
+
+// Listen for connection events
+sdk.on('ready', () => {
+  console.log('SDK ready');
+});
+
+sdk.on('disconnect', () => {
+  console.log('Disconnected');
+});
+```
+
+## Complete Example
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+
+// Initialize SDK
+const sdk = AdvancedIMessageKit.getInstance({
+  serverUrl: 'http://localhost:1234',
+  apiKey: 'your-api-key',
+  logLevel: 'info',
+  logToFile: true
+});
+
+// Set up event listeners
+sdk.on('ready', () => {
+  console.log('Connected and authenticated!');
+});
+
+sdk.on('new-message', (message) => {
+  console.log('Received message:', message.text);
+});
+
+sdk.on('disconnect', () => {
+  console.log('Connection lost');
+});
+
+// Connect to server
+await sdk.connect();
+
+// Use SDK modules
+const chats = await sdk.chats.getChats();
+console.log(`You have ${chats.length} chats`);
+
+// Send a message
+await sdk.messages.sendMessage({
+  chatGuid: 'chat-guid',
+  text: 'Hello, world!'
+});
+
+// Clean up when done
+await sdk.close();
+```
+
+## Singleton Pattern
+
+The SDK uses a singleton pattern to ensure only one instance exists globally. This prevents multiple WebSocket connections and ensures consistent state:
+
+```typescript
+// These both return the same instance
+const sdk1 = AdvancedIMessageKit.getInstance();
+const sdk2 = AdvancedIMessageKit.getInstance();
+
+console.log(sdk1 === sdk2); // true
+```
+
+## See Also
+
+- [ClientConfig](/api/client/configuration) - SDK configuration options
+- [Events](/api/events/message-events) - Available event types
+- [Modules](/api/client/advanced-imessage-kit) - SDK module reference

@@ -1,0 +1,326 @@
+---
+title: 'Edit and Unsend Messages'
+description: 'Modify sent messages or remove them completely'
+icon: 'pen-to-square'
+---
+
+## Overview
+
+The SDK allows you to edit messages after sending them or completely unsend them. These features mirror the native iMessage capabilities available on iOS 16+.
+
+## Editing Messages
+
+You can edit a message within a certain time window after sending it (typically 15 minutes on iOS).
+
+### Basic Edit Example
+
+```typescript
+import { createSDK, handleError } from "./utils";
+
+const CHAT_GUID = process.env.CHAT_GUID || "any;-;+1234567890";
+const MESSAGE_GUID = process.env.EDIT_MESSAGE_GUID;
+
+async function main() {
+    const sdk = createSDK();
+
+    sdk.on("ready", async () => {
+        try {
+            let messageGuid = MESSAGE_GUID;
+
+            // Send a message first if we don't have a GUID
+            if (!messageGuid) {
+                const message = await sdk.messages.sendMessage({
+                    chatGuid: CHAT_GUID,
+                    message: "text",
+                });
+
+                messageGuid = message.guid;
+                console.log(`sent: ${messageGuid}`);
+                console.log(`original text: ${message.text}`);
+
+                // Wait a moment before editing
+                await new Promise((resolve) => setTimeout(resolve, 3000));
+            }
+
+            // Edit the message
+            const editedMessage = await sdk.messages.editMessage({
+                messageGuid: messageGuid,
+                editedMessage: "changed text",
+                backwardsCompatibilityMessage: "changed text",
+                partIndex: 0,
+            });
+
+            console.log(`edited: ${editedMessage.guid}`);
+            console.log(`new text: ${editedMessage.text}`);
+            console.log(`dateEdited: ${editedMessage.dateEdited}`);
+
+            // Fetch the message to verify the edit
+            const fetchedMessage = await sdk.messages.getMessage(messageGuid, {
+                with: ["attributedBody", "messageSummaryInfo"],
+            });
+            console.log("\nFetched message after edit:");
+            console.log(`  text: ${fetchedMessage.text}`);
+            console.log(`  dateEdited: ${fetchedMessage.dateEdited}`);
+            console.log(`  messageSummaryInfo: ${JSON.stringify(fetchedMessage.messageSummaryInfo, null, 2)}`);
+        } catch (error) {
+            handleError(error, "Failed to edit message");
+        }
+
+        await sdk.close();
+        process.exit(0);
+    });
+
+    await sdk.connect();
+}
+
+main().catch(console.error);
+```
+
+### Edit Parameters
+
+<ParamField path="messageGuid" type="string" required>
+  The GUID of the message to edit
+</ParamField>
+
+<ParamField path="editedMessage" type="string" required>
+  The new text content for the message
+</ParamField>
+
+<ParamField path="backwardsCompatibilityMessage" type="string" required>
+  Fallback text for devices that don't support editing (iOS < 16)
+</ParamField>
+
+<ParamField path="partIndex" type="number" default="0">
+  The part index to edit (for multi-part messages)
+</ParamField>
+
+## Unsending Messages
+
+Completely remove a message from the conversation. This is typically available for 2 minutes after sending.
+
+### Basic Unsend Example
+
+```typescript
+import { createSDK, handleError } from "./utils";
+
+const CHAT_GUID = process.env.CHAT_GUID || "any;-;+1234567890";
+const MESSAGE_GUID = process.env.UNSEND_MESSAGE_GUID;
+
+async function main() {
+    const sdk = createSDK();
+
+    sdk.on("ready", async () => {
+        try {
+            let messageGuid = MESSAGE_GUID;
+
+            // Send a message first if we don't have a GUID
+            if (!messageGuid) {
+                const message = await sdk.messages.sendMessage({
+                    chatGuid: CHAT_GUID,
+                    message: "This message will be unsent in 3 seconds!",
+                });
+
+                messageGuid = message.guid;
+                console.log(`sent: ${messageGuid}`);
+
+                // Wait a moment before unsending
+                await new Promise((resolve) => setTimeout(resolve, 3000));
+            }
+
+            // Unsend the message
+            const unsentMessage = await sdk.messages.unsendMessage({
+                messageGuid: messageGuid,
+            });
+
+            console.log(`unsent: ${unsentMessage.guid}`);
+        } catch (error) {
+            handleError(error, "Failed to unsend message");
+        }
+
+        await sdk.close();
+        process.exit(0);
+    });
+
+    await sdk.connect();
+}
+
+main().catch(console.error);
+```
+
+### Unsend Parameters
+
+<ParamField path="messageGuid" type="string" required>
+  The GUID of the message to unsend
+</ParamField>
+
+## Combined Example
+
+Send, edit, then unsend a message:
+
+<CodeGroup>
+
+```typescript Send → Edit → Unsend
+const sdk = createSDK();
+
+sdk.on("ready", async () => {
+    // 1. Send message
+    const message = await sdk.messages.sendMessage({
+        chatGuid: CHAT_GUID,
+        message: "Original message",
+    });
+    console.log(`Sent: ${message.text}`);
+
+    // 2. Wait and edit
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    const edited = await sdk.messages.editMessage({
+        messageGuid: message.guid,
+        editedMessage: "Edited message",
+        backwardsCompatibilityMessage: "Edited message",
+        partIndex: 0,
+    });
+    console.log(`Edited: ${edited.text}`);
+
+    // 3. Wait and unsend
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    await sdk.messages.unsendMessage({
+        messageGuid: message.guid,
+    });
+    console.log("Unsent");
+
+    await sdk.close();
+});
+
+await sdk.connect();
+```
+
+```typescript Auto-Correct Bot
+// Bot that edits its messages after sending
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    // Send initial response
+    const response = await sdk.messages.sendMessage({
+        chatGuid: chat.guid,
+        message: "Let me think...",
+    });
+
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Edit with actual response
+    await sdk.messages.editMessage({
+        messageGuid: response.guid,
+        editedMessage: `You said: ${message.text}`,
+        backwardsCompatibilityMessage: `You said: ${message.text}`,
+        partIndex: 0,
+    });
+});
+```
+
+</CodeGroup>
+
+## Time Limits
+
+<Warning>
+  **Edit Window**: Typically 15 minutes after sending
+  
+  **Unsend Window**: Typically 2 minutes after sending
+  
+  These limits are enforced by iMessage and may vary by iOS version.
+</Warning>
+
+## Edit History
+
+When you edit a message, iMessage stores edit history. You can access this via `messageSummaryInfo`:
+
+```typescript
+const message = await sdk.messages.getMessage(messageGuid, {
+    with: ["messageSummaryInfo"],
+});
+
+console.log(message.messageSummaryInfo);
+// Contains edit history and metadata
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always provide backwardsCompatibilityMessage">
+    Devices running iOS < 16 don't support editing. The `backwardsCompatibilityMessage` ensures they see the updated content:
+    
+    ```typescript
+    await sdk.messages.editMessage({
+        messageGuid: guid,
+        editedMessage: "New text",
+        backwardsCompatibilityMessage: "New text", // Important!
+        partIndex: 0,
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Handle edit failures gracefully">
+    Editing can fail if the time window has passed:
+    
+    ```typescript
+    try {
+        await sdk.messages.editMessage({...});
+    } catch (error) {
+        if (error.message.includes("time")) {
+            console.log("Edit window expired");
+            // Send a new message instead
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Store message GUIDs for later operations">
+    If you plan to edit or unsend messages, store their GUIDs:
+    
+    ```typescript
+    const sentMessages = new Map();
+    
+    const msg = await sdk.messages.sendMessage({...});
+    sentMessages.set(msg.guid, msg);
+    
+    // Later...
+    await sdk.messages.editMessage({
+        messageGuid: sentMessages.get(someKey).guid,
+        ...
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Error Handling
+
+Common errors when editing or unsending:
+
+```typescript
+try {
+    await sdk.messages.editMessage({...});
+} catch (error) {
+    if (error.message.includes("not found")) {
+        console.error("Message doesn't exist");
+    } else if (error.message.includes("time")) {
+        console.error("Edit window expired");
+    } else if (error.message.includes("permission")) {
+        console.error("Cannot edit messages from others");
+    } else {
+        console.error("Unknown error:", error);
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Reactions" icon="heart" href="/examples/reactions-and-tapbacks">
+    Add tapbacks to messages
+  </Card>
+  <Card title="Message Effects" icon="wand-magic-sparkles" href="/examples/send-with-effects">
+    Send messages with effects
+  </Card>
+</CardGroup>

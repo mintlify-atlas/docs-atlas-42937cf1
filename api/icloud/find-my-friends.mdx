@@ -1,0 +1,144 @@
+---
+title: 'Find My Friends'
+description: 'Refresh and retrieve Find My location data for friends sharing their location'
+icon: 'location-dot'
+---
+
+## refreshFindMyFriends()
+
+Refreshes and returns the latest Find My location data for all friends who are sharing their location with you.
+
+```typescript
+const locations = await sdk.icloud.refreshFindMyFriends();
+```
+
+### Returns
+
+<ResponseField name="locations" type="FindMyLocationItem[]">
+  An array of location items for all friends sharing their location
+</ResponseField>
+
+---
+
+## FindMyLocationItem
+
+Represents location data for a friend in the Find My network.
+
+### Fields
+
+<ResponseField name="handle" type="string | null">
+  The phone number or email address of the person sharing their location
+  
+  Example: `"+1234567890"`
+</ResponseField>
+
+<ResponseField name="coordinates" type="[number, number]">
+  A tuple containing [latitude, longitude] coordinates
+  
+  Example: `[37.7749, -122.4194]`
+</ResponseField>
+
+<ResponseField name="long_address" type="string | null">
+  Full address of the location
+  
+  Example: `"123 Main St, San Francisco, CA 94102, USA"`
+</ResponseField>
+
+<ResponseField name="short_address" type="string | null">
+  Shortened address of the location
+  
+  Example: `"123 Main St"`
+</ResponseField>
+
+<ResponseField name="subtitle" type="string | null">
+  Additional location context or description
+</ResponseField>
+
+<ResponseField name="title" type="string | null">
+  Location name or label
+  
+  Example: `"Home"` or `"Work"`
+</ResponseField>
+
+<ResponseField name="last_updated" type="number">
+  Unix timestamp (in milliseconds) when the location was last updated
+  
+  Example: `1709438400000`
+</ResponseField>
+
+<ResponseField name="is_locating_in_progress" type="0 | 1 | boolean">
+  Whether a location refresh is currently in progress
+</ResponseField>
+
+<ResponseField name="status" type="'legacy' | 'live' | 'shallow'">
+  The quality/type of location data:
+  - `legacy`: Older location data
+  - `live`: Real-time location tracking
+  - `shallow`: Basic location data
+</ResponseField>
+
+<ResponseField name="expiry" type="number | null" default="null">
+  Unix timestamp (in milliseconds) when the location data expires (for live locations)
+  
+  Example: `1709442000000`
+</ResponseField>
+
+---
+
+## Example
+
+Refresh Find My data and check if a specific contact is sharing their location:
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: 'http://localhost:1234',
+  password: 'your-password'
+});
+
+await sdk.connect();
+
+// Refresh and get all friend locations
+const locations = await sdk.icloud.refreshFindMyFriends();
+
+// Find a specific contact
+const targetHandle = '+1234567890';
+const friendLocation = locations.find(loc => loc.handle === targetHandle);
+
+if (friendLocation) {
+  const [lat, lng] = friendLocation.coordinates;
+  console.log(`Friend is at: ${lat}, ${lng}`);
+  console.log(`Address: ${friendLocation.long_address}`);
+  
+  // Create Google Maps URL
+  const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+  console.log(`View on map: ${mapsUrl}`);
+  
+  // Check if location expires
+  if (friendLocation.expiry) {
+    const minutesRemaining = Math.floor(
+      (friendLocation.expiry - Date.now()) / 60000
+    );
+    console.log(`Location expires in ${minutesRemaining} minutes`);
+  }
+} else {
+  console.log('Friend is not sharing location');
+}
+
+// List all friends sharing location
+console.log(`\nTotal friends sharing: ${locations.length}`);
+for (const loc of locations) {
+  console.log(`- ${loc.handle}: ${loc.status}`);
+}
+```
+
+## Related Methods
+
+- `getFindMyFriends()` - Get cached location data without refreshing
+- `getLocationForHandle(handle)` - Get location for a specific handle
+- `isHandleSharingLocation(handle)` - Check if a handle is sharing their location
+
+<Note>
+  Location data requires iCloud to be signed in on the BlueBubbles server and Find My Friends to be enabled.
+</Note>

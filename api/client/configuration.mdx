@@ -1,0 +1,283 @@
+---
+title: "ClientConfig"
+description: "Configuration interface for Advanced iMessage Kit SDK"
+---
+
+## Overview
+
+The `ClientConfig` interface defines the configuration options for initializing the Advanced iMessage Kit SDK client.
+
+## Interface Definition
+
+```typescript
+interface ClientConfig {
+  serverUrl?: string;
+  apiKey?: string;
+  logLevel?: "debug" | "info" | "warn" | "error";
+  logToFile?: boolean;
+}
+```
+
+## Fields
+
+### serverUrl
+
+The URL of the iMessage server to connect to.
+
+<ParamField path="serverUrl" type="string" optional default="http://localhost:1234">
+  The base URL of your BlueBubbles server. Should include the protocol (http/https) and port number.
+</ParamField>
+
+**Example:**
+
+```typescript
+const sdk = AdvancedIMessageKit.getInstance({
+  serverUrl: 'http://localhost:1234'
+});
+```
+
+**Common values:**
+- `http://localhost:1234` - Local development server
+- `https://your-server.com` - Remote server with SSL
+- `http://192.168.1.100:1234` - Local network server
+
+### apiKey
+
+API key for authenticating with the iMessage server.
+
+<ParamField path="apiKey" type="string" optional>
+  Your BlueBubbles server API key. Required for servers with authentication enabled. Can be found in your BlueBubbles server settings.
+</ParamField>
+
+**Example:**
+
+```typescript
+const sdk = AdvancedIMessageKit.getInstance({
+  serverUrl: 'http://localhost:1234',
+  apiKey: 'your-secret-api-key-here'
+});
+```
+
+<Warning>
+  Never commit your API key to version control. Use environment variables instead:
+  ```typescript
+  apiKey: process.env.BLUEBUBBLES_API_KEY
+  ```
+</Warning>
+
+### logLevel
+
+Logging level for the SDK.
+
+<ParamField path="logLevel" type="'debug' | 'info' | 'warn' | 'error'" optional default="info">
+  Controls the verbosity of SDK logs. Higher levels include all lower levels.
+  
+  - `debug` - Detailed debugging information
+  - `info` - General informational messages
+  - `warn` - Warning messages
+  - `error` - Error messages only
+</ParamField>
+
+**Example:**
+
+```typescript
+const sdk = AdvancedIMessageKit.getInstance({
+  logLevel: 'debug' // Show all logs including debug info
+});
+```
+
+**Log level hierarchy:**
+
+- `error` - Only critical errors
+- `warn` - Errors + warnings
+- `info` - Errors + warnings + general info (default)
+- `debug` - Everything including detailed debug traces
+
+### logToFile
+
+Whether to write logs to a file.
+
+<ParamField path="logToFile" type="boolean" optional default="true">
+  When enabled, SDK logs are written to a file in addition to console output. Useful for debugging and monitoring in production.
+</ParamField>
+
+**Example:**
+
+```typescript
+const sdk = AdvancedIMessageKit.getInstance({
+  logToFile: false // Disable file logging
+});
+```
+
+<Info>
+  Log files are stored in the SDK's log directory. Set to `false` in development to reduce disk usage.
+</Info>
+
+## Complete Examples
+
+### Minimal Configuration
+
+Connect to a local server without authentication:
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+
+const sdk = AdvancedIMessageKit.getInstance();
+await sdk.connect();
+```
+
+This uses all default values:
+- `serverUrl`: `http://localhost:1234`
+- `logLevel`: `info`
+- `logToFile`: `true`
+- No API key (legacy mode)
+
+### Production Configuration
+
+Secure configuration for production use:
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+
+const sdk = AdvancedIMessageKit.getInstance({
+  serverUrl: process.env.BLUEBUBBLES_SERVER_URL,
+  apiKey: process.env.BLUEBUBBLES_API_KEY,
+  logLevel: 'warn',
+  logToFile: true
+});
+
+await sdk.connect();
+```
+
+### Development Configuration
+
+Verbose logging for debugging:
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+
+const sdk = AdvancedIMessageKit.getInstance({
+  serverUrl: 'http://localhost:1234',
+  apiKey: 'dev-api-key',
+  logLevel: 'debug',
+  logToFile: false // Faster in development
+});
+
+await sdk.connect();
+```
+
+### Remote Server Configuration
+
+Connect to a remote BlueBubbles server:
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+
+const sdk = AdvancedIMessageKit.getInstance({
+  serverUrl: 'https://your-server.example.com',
+  apiKey: 'your-secure-api-key',
+  logLevel: 'info',
+  logToFile: true
+});
+
+await sdk.connect();
+```
+
+## Environment Variables
+
+Recommended approach for managing configuration:
+
+```bash
+# .env file
+BLUEBUBBLES_SERVER_URL=http://localhost:1234
+BLUEBUBBLES_API_KEY=your-api-key-here
+LOG_LEVEL=info
+```
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
+const sdk = AdvancedIMessageKit.getInstance({
+  serverUrl: process.env.BLUEBUBBLES_SERVER_URL,
+  apiKey: process.env.BLUEBUBBLES_API_KEY,
+  logLevel: (process.env.LOG_LEVEL as any) || 'info',
+  logToFile: process.env.NODE_ENV === 'production'
+});
+
+await sdk.connect();
+```
+
+## TypeScript Types
+
+The configuration is fully typed for TypeScript users:
+
+```typescript
+import type { ClientConfig } from 'advanced-imessage-kit';
+
+// Type-safe configuration
+const config: ClientConfig = {
+  serverUrl: 'http://localhost:1234',
+  apiKey: 'my-api-key',
+  logLevel: 'info', // Autocomplete: "debug" | "info" | "warn" | "error"
+  logToFile: true
+};
+
+const sdk = AdvancedIMessageKit.getInstance(config);
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use environment variables for sensitive data">
+    Never hardcode API keys or server URLs in your source code. Use environment variables or secure secret management systems.
+    
+    ```typescript
+    // Good
+    apiKey: process.env.BLUEBUBBLES_API_KEY
+    
+    // Bad
+    apiKey: 'my-hardcoded-secret-key'
+    ```
+  </Accordion>
+
+  <Accordion title="Adjust log levels for different environments">
+    Use verbose logging in development and minimal logging in production:
+    
+    ```typescript
+    logLevel: process.env.NODE_ENV === 'production' ? 'warn' : 'debug'
+    ```
+  </Accordion>
+
+  <Accordion title="Disable file logging in serverless environments">
+    In ephemeral environments like AWS Lambda or Docker containers, disable file logging:
+    
+    ```typescript
+    logToFile: !process.env.IS_SERVERLESS
+    ```
+  </Accordion>
+
+  <Accordion title="Validate configuration on startup">
+    Always validate your configuration before connecting:
+    
+    ```typescript
+    if (!process.env.BLUEBUBBLES_API_KEY) {
+      throw new Error('BLUEBUBBLES_API_KEY is required');
+    }
+    
+    const sdk = AdvancedIMessageKit.getInstance({
+      serverUrl: process.env.BLUEBUBBLES_SERVER_URL,
+      apiKey: process.env.BLUEBUBBLES_API_KEY
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## See Also
+
+- [AdvancedIMessageKit](/api/client/advanced-imessage-kit) - Main SDK client class
+- [Quick Start](/quickstart) - Getting started guide
+- [Authentication](/configuration) - Authentication setup guide

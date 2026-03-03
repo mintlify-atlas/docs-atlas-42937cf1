@@ -1,0 +1,207 @@
+---
+title: "Chat Backgrounds"
+description: "Manage custom backgrounds for chat conversations"
+---
+
+## getBackground
+
+Retrieve the current background configuration for a chat.
+
+```typescript
+await client.chat.getBackground(chatGuid): Promise<{
+  hasBackground: boolean;
+  backgroundChannelGUID?: string | null;
+  imageUrl?: string | null;
+  backgroundId?: string | null;
+}>
+```
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  Unique identifier of the chat
+</ParamField>
+
+### Returns
+
+<ResponseField name="background" type="object">
+  Background configuration object
+  
+  <ResponseField name="hasBackground" type="boolean">
+    Whether the chat has a custom background
+  </ResponseField>
+  
+  <ResponseField name="backgroundChannelGUID" type="string | null" optional>
+    GUID of the background channel
+  </ResponseField>
+  
+  <ResponseField name="imageUrl" type="string | null" optional>
+    URL of the background image
+  </ResponseField>
+  
+  <ResponseField name="backgroundId" type="string | null" optional>
+    Identifier for the background
+  </ResponseField>
+</ResponseField>
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+const chatGuid = 'iMessage;+;chat123456';
+
+// Get current background
+const background = await client.chat.getBackground(chatGuid);
+
+if (background.hasBackground) {
+  console.log('Background URL:', background.imageUrl);
+  console.log('Background ID:', background.backgroundId);
+} else {
+  console.log('No custom background set');
+}
+```
+
+---
+
+## setBackground
+
+Set a custom background for a chat using an image URL, file path, or base64 data.
+
+```typescript
+await client.chat.setBackground(
+  chatGuid,
+  options: string | { imageUrl?: string; filePath?: string; fileData?: string }
+): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  Unique identifier of the chat
+</ParamField>
+
+<ParamField path="options" type="string | object" required>
+  Background image source (can be a URL string or an object with one of the following properties)
+  
+  <ParamField path="imageUrl" type="string" optional>
+    URL of the image to use as background
+  </ParamField>
+  
+  <ParamField path="filePath" type="string" optional>
+    Local file path to the image
+  </ParamField>
+  
+  <ParamField path="fileData" type="string" optional>
+    Base64-encoded image data
+  </ParamField>
+</ParamField>
+
+### Returns
+
+Returns a Promise that resolves when the background is set.
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+import { readFileSync } from 'fs';
+import path from 'path';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+const chatGuid = 'iMessage;+;chat123456';
+
+// Set background using image URL (shorthand)
+await client.chat.setBackground(
+  chatGuid,
+  'https://example.com/images/background.jpg'
+);
+
+// Set background using image URL (object syntax)
+await client.chat.setBackground(chatGuid, {
+  imageUrl: 'https://example.com/images/background.jpg'
+});
+
+// Set background using local file path
+const imagePath = path.join(__dirname, 'images', 'chat-bg.png');
+await client.chat.setBackground(chatGuid, {
+  filePath: imagePath
+});
+
+// Set background using base64 data
+const imageBuffer = readFileSync(imagePath);
+const base64Data = imageBuffer.toString('base64');
+await client.chat.setBackground(chatGuid, {
+  fileData: base64Data
+});
+
+console.log('Chat background updated successfully');
+```
+
+---
+
+## removeBackground
+
+Remove the custom background from a chat.
+
+```typescript
+await client.chat.removeBackground(chatGuid): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  Unique identifier of the chat
+</ParamField>
+
+### Returns
+
+Returns a Promise that resolves when the background is removed.
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+const chatGuid = 'iMessage;+;chat123456';
+
+// Remove chat background
+await client.chat.removeBackground(chatGuid);
+console.log('Chat background removed');
+```
+
+### Complete Background Management Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+import path from 'path';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+const chatGuid = 'iMessage;+;chat123456';
+
+// Check current background
+const currentBg = await client.chat.getBackground(chatGuid);
+console.log('Current background:', currentBg);
+
+if (currentBg.hasBackground) {
+  // Remove existing background
+  await client.chat.removeBackground(chatGuid);
+  console.log('Removed old background');
+}
+
+// Set new background
+const newBgPath = path.join(__dirname, 'backgrounds', 'ocean.jpg');
+await client.chat.setBackground(chatGuid, {
+  filePath: newBgPath
+});
+
+// Verify new background is set
+const updatedBg = await client.chat.getBackground(chatGuid);
+console.log('New background set:', updatedBg.hasBackground);
+```

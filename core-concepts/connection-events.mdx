@@ -1,0 +1,356 @@
+---
+title: Connection Events
+description: Real-time connection lifecycle events in Advanced iMessage Kit
+---
+
+## Overview
+
+Advanced iMessage Kit uses Socket.IO to maintain a real-time connection to the iMessage server. Understanding connection events is crucial for building robust applications that handle reconnections, authentication, and errors gracefully.
+
+## Core Connection Events
+
+### ready
+
+Emitted when the SDK successfully connects and authenticates with the server.
+
+```typescript
+import { SDK } from "@photon-ai/advanced-imessage-kit";
+
+const sdk = SDK({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key", // Optional for legacy servers
+});
+
+sdk.on("ready", () => {
+  console.log("SDK connected and ready to use");
+  // Safe to start sending messages or fetching data
+});
+
+await sdk.connect();
+```
+
+<Note>
+  The `ready` event fires only once per connection. After authentication succeeds, the SDK is ready to send and receive messages.
+</Note>
+
+**When it fires:**
+- After successful Socket.IO connection
+- After API key authentication (if provided)
+- Immediately after connect (legacy servers without authentication)
+
+**Source code reference:** `/home/daytona/workspace/source/client.ts:296-300`, `/home/daytona/workspace/source/client.ts:313-319`
+
+### disconnect
+
+Emitted when the connection to the server is lost.
+
+```typescript
+sdk.on("disconnect", () => {
+  console.log("Disconnected from iMessage server");
+  // Connection lost - SDK will attempt to reconnect automatically
+});
+```
+
+**Common disconnect reasons:**
+- `"io server disconnect"` - Server forcibly closed the connection
+- `"transport close"` - Network connection lost
+- `"ping timeout"` - Server didn't respond to ping
+
+**Source code reference:** `/home/daytona/workspace/source/client.ts:266-275`
+
+<Warning>
+  When disconnected, the `readyEmitted` flag is reset. You'll receive another `ready` event after reconnection completes.
+</Warning>
+
+### error
+
+Emitted when an error occurs during authentication or connection.
+
+```typescript
+sdk.on("error", (error: Error) => {
+  console.error("SDK error:", error.message);
+  
+  if (error.message.includes("Authentication failed")) {
+    console.error("Check your API key");
+  }
+});
+```
+
+**Common error scenarios:**
+- Invalid or missing API key
+- Server authentication failure
+- Connection refused
+
+**Source code reference:** `/home/daytona/workspace/source/client.ts:303-307`
+
+## Advanced Connection Events
+
+These events provide detailed insights into the reconnection process:
+
+### reconnect_attempt
+
+```typescript
+sdk.socket.io.on("reconnect_attempt", (attempt) => {
+  console.log(`Reconnection attempt #${attempt}...`);
+});
+```
+
+### reconnect
+
+```typescript
+sdk.socket.io.on("reconnect", (attempt) => {
+  console.log(`Reconnected successfully after ${attempt} attempt(s)`);
+});
+```
+
+### reconnect_error
+
+```typescript
+sdk.socket.io.on("reconnect_error", (error) => {
+  console.warn(`Reconnection error: ${error.message}`);
+});
+```
+
+### reconnect_failed
+
+```typescript
+sdk.socket.io.on("reconnect_failed", () => {
+  console.error("All reconnection attempts failed");
+});
+```
+
+**Source code reference:** `/home/daytona/workspace/source/client.ts:277-291`
+
+<Note>
+  The SDK is configured with infinite reconnection attempts (`reconnectionAttempts: Infinity`) and will never give up trying to reconnect.
+</Note>
+
+## Connection Configuration
+
+The SDK uses optimized Socket.IO settings for reliable messaging:
+
+```typescript
+const sdk = SDK({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key",
+});
+
+// Internal Socket.IO configuration:
+// - transports: ["websocket"] - WebSocket only (polling disabled)
+// - timeout: 10000 - 10 second connection timeout
+// - reconnection: true - Auto-reconnect enabled
+// - reconnectionAttempts: Infinity - Never give up
+// - reconnectionDelay: 100 - Start with 100ms delay
+// - reconnectionDelayMax: 2000 - Max 2 seconds between attempts
+```
+
+**Source code reference:** `/home/daytona/workspace/source/client.ts:107-130`
+
+<Warning>
+  Polling transport is disabled to prevent message duplication issues. The SDK uses WebSocket exclusively for stable, real-time communication.
+</Warning>
+
+## Complete Connection Example
+
+```typescript
+import { SDK } from "@photon-ai/advanced-imessage-kit";
+
+const sdk = SDK({
+  serverUrl: process.env.SERVER_URL || "http://localhost:1234",
+  apiKey: process.env.API_KEY,
+  logLevel: "info",
+});
+
+// Connection lifecycle
+sdk.on("ready", async () => {
+  console.log("✓ Connected and authenticated");
+  
+  // Fetch initial data
+  const chats = await sdk.chats.getChats({ limit: 10 });
+  console.log(`Loaded ${chats.length} recent chats`);
+});
+
+sdk.on("disconnect", () => {
+  console.log("✗ Connection lost - reconnecting...");
+});
+
+sdk.on("error", (error) => {
+  console.error("✗ Error:", error.message);
+});
+
+// Reconnection monitoring
+sdk.socket.io.on("reconnect_attempt", (attempt) => {
+  console.log(`⟳ Reconnection attempt #${attempt}`);
+});
+
+sdk.socket.io.on("reconnect", (attempt) => {
+  console.log(`✓ Reconnected after ${attempt} attempt(s)`);
+});
+
+sdk.socket.io.on("reconnect_error", (error) => {
+  console.warn(`✗ Reconnection failed: ${error.message}`);
+});
+
+// Start connection
+await sdk.connect();
+
+// Graceful shutdown
+process.on("SIGINT", async () => {
+  console.log("\nShutting down...");
+  await sdk.close();
+  process.exit(0);
+});
+```
+
+## Authentication Flow
+
+### With API Key
+
+```
+┌──────────┐
+│ connect()│
+└────┬─────┘
+     │
+     ▼
+┌─────────────────┐
+│ Socket connects │
+└────┬────────────┘
+     │
+     ▼
+┌──────────────────┐
+│ Send API key     │
+└────┬─────────────┘
+     │
+     ▼
+┌──────────────────┐      ┌─────────────┐
+│ Server validates │─────▶│ 'auth-ok'   │
+└────┬─────────────┘      └─────────────┘
+     │                           │
+     │                           ▼
+     │                    ┌─────────────┐
+     │                    │ emit 'ready'│
+     │                    └─────────────┘
+     ▼
+┌─────────────────┐
+│ 'auth-error'    │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────┐
+│ emit 'error'│
+└─────────────┘
+```
+
+### Without API Key (Legacy)
+
+```
+┌──────────┐
+│ connect()│
+└────┬─────┘
+     │
+     ▼
+┌─────────────────┐
+│ Socket connects │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│ emit 'ready'    │
+│ (immediate)     │
+└─────────────────┘
+```
+
+**Source code reference:** `/home/daytona/workspace/source/client.ts:293-320`
+
+## Message Recovery on Reconnect
+
+The SDK automatically recovers missed messages during disconnection:
+
+```typescript
+// Internal recovery process (automatic)
+// 1. Track last message timestamp
+// 2. On reconnect, query messages after last timestamp
+// 3. Emit recovered messages as 'new-message' events
+// 4. Update processed message cache to prevent duplicates
+```
+
+**Source code reference:** `/home/daytona/workspace/source/client.ts:331-360`
+
+<Note>
+  Message recovery only works if at least one message was received before disconnection. The SDK stores the timestamp of the last processed message.
+</Note>
+
+## Best Practices
+
+### Wait for Ready Event
+
+Always wait for the `ready` event before performing operations:
+
+```typescript
+// ✓ Good
+sdk.on("ready", async () => {
+  await sdk.messages.sendMessage({
+    chatGuid: "any;-;+1234567890",
+    message: "Hello!",
+  });
+});
+
+await sdk.connect();
+
+// ✗ Bad - might execute before connection is ready
+await sdk.connect();
+await sdk.messages.sendMessage({
+  chatGuid: "any;-;+1234567890",
+  message: "Hello!",
+});
+```
+
+### Handle Reconnections
+
+Monitor reconnection events for production reliability:
+
+```typescript
+let isConnected = false;
+
+sdk.on("ready", () => {
+  isConnected = true;
+});
+
+sdk.on("disconnect", () => {
+  isConnected = false;
+});
+
+// Queue messages during disconnection
+async function safeSend(chatGuid: string, message: string) {
+  if (!isConnected) {
+    console.warn("Not connected - will retry when reconnected");
+    // Implement retry queue or wait for reconnection
+    return;
+  }
+  
+  await sdk.messages.sendMessage({ chatGuid, message });
+}
+```
+
+### Graceful Shutdown
+
+Always close the connection properly:
+
+```typescript
+process.on("SIGINT", async () => {
+  console.log("Shutting down gracefully...");
+  await sdk.close();
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  await sdk.close();
+  process.exit(0);
+});
+```
+
+## Related Events
+
+- [Message Events](/api/events/message-events) - New messages and updates
+- [Chat Events](/api/events/chat-events) - Chat status changes
+- [Group Events](/api/events/group-events) - Group modifications

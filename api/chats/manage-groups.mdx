@@ -1,0 +1,243 @@
+---
+title: "Manage Groups"
+description: "Manage group chat settings and participants"
+---
+
+## updateChat
+
+Update chat properties such as display name.
+
+```typescript
+await client.chat.updateChat(guid, options): Promise<ChatResponse>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  Unique identifier of the chat to update
+</ParamField>
+
+<ParamField path="options" type="object" required>
+  Properties to update
+  
+  <ParamField path="displayName" type="string" optional>
+    New display name for the chat
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="chat" type="ChatResponse">
+  Updated chat object
+</ResponseField>
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+// Update group chat name
+const updatedChat = await client.chat.updateChat('iMessage;+;chat123456', {
+  displayName: 'Weekend Trip Planning'
+});
+
+console.log(`Chat renamed to: ${updatedChat.displayName}`);
+```
+
+---
+
+## addParticipant
+
+Add a participant to a group chat.
+
+```typescript
+await client.chat.addParticipant(chatGuid, address): Promise<ChatResponse>
+```
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  Unique identifier of the chat
+</ParamField>
+
+<ParamField path="address" type="string" required>
+  Phone number or email address of the participant to add
+</ParamField>
+
+### Returns
+
+<ResponseField name="chat" type="ChatResponse">
+  Updated chat object with new participant
+</ResponseField>
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+const chatGuid = 'iMessage;+;chat123456';
+
+// Add participant by phone number
+const updatedChat = await client.chat.addParticipant(
+  chatGuid,
+  '+1234567890'
+);
+
+console.log(`Participant added. Chat now has ${updatedChat.participants?.length} members`);
+
+// Add participant by email
+await client.chat.addParticipant(chatGuid, 'newperson@icloud.com');
+```
+
+---
+
+## removeParticipant
+
+Remove a participant from a group chat.
+
+```typescript
+await client.chat.removeParticipant(chatGuid, address): Promise<ChatResponse>
+```
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  Unique identifier of the chat
+</ParamField>
+
+<ParamField path="address" type="string" required>
+  Phone number or email address of the participant to remove
+</ParamField>
+
+### Returns
+
+<ResponseField name="chat" type="ChatResponse">
+  Updated chat object without the removed participant
+</ResponseField>
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+const chatGuid = 'iMessage;+;chat123456';
+
+// Remove participant
+const updatedChat = await client.chat.removeParticipant(
+  chatGuid,
+  '+1234567890'
+);
+
+console.log(`Participant removed. ${updatedChat.participants?.length} members remaining`);
+```
+
+---
+
+## leaveChat
+
+Leave a group chat.
+
+```typescript
+await client.chat.leaveChat(guid): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  Unique identifier of the chat to leave
+</ParamField>
+
+### Returns
+
+Returns a Promise that resolves when the operation completes.
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+// Leave a group chat
+await client.chat.leaveChat('iMessage;+;chat123456');
+console.log('Successfully left the chat');
+```
+
+---
+
+## setGroupIcon
+
+Set a custom icon/image for a group chat.
+
+```typescript
+await client.chat.setGroupIcon(chatGuid, filePath): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  Unique identifier of the chat
+</ParamField>
+
+<ParamField path="filePath" type="string" required>
+  Path to the image file to use as the group icon
+</ParamField>
+
+### Returns
+
+Returns a Promise that resolves when the operation completes.
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+import path from 'path';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+const chatGuid = 'iMessage;+;chat123456';
+
+// Set group icon from local file
+const iconPath = path.join(__dirname, 'images', 'group-icon.png');
+await client.chat.setGroupIcon(chatGuid, iconPath);
+
+console.log('Group icon updated successfully');
+```
+
+---
+
+## removeGroupIcon
+
+Remove the custom icon from a group chat.
+
+```typescript
+await client.chat.removeGroupIcon(chatGuid): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  Unique identifier of the chat
+</ParamField>
+
+### Returns
+
+Returns a Promise that resolves when the operation completes.
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+// Remove group icon
+await client.chat.removeGroupIcon('iMessage;+;chat123456');
+console.log('Group icon removed');
+```

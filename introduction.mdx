@@ -1,0 +1,123 @@
+---
+title: Introduction
+description: Advanced iMessage Kit SDK - Powerful TypeScript iMessage SDK with real-time message processing
+---
+
+# Advanced iMessage Kit SDK
+
+Advanced iMessage Kit is a powerful TypeScript SDK that provides comprehensive control over iMessage on macOS. Build sophisticated messaging automation, chatbots, and integrations with a modern, event-driven API.
+
+<CardGroup cols={2}>
+  <Card title="Messages & Events" icon="message">
+    Send and receive messages in real-time with typed event handlers for new messages, reactions, read receipts, and typing indicators.
+  </Card>
+  
+  <Card title="Chat Management" icon="users">
+    Create group chats, manage participants, set chat names and icons, and query chat history with powerful filtering.
+  </Card>
+  
+  <Card title="Rich Media" icon="image">
+    Send attachments, audio messages, contact cards, stickers, and message effects like screen effects and bubble animations.
+  </Card>
+  
+  <Card title="Advanced Features" icon="sparkles">
+    Access polls, scheduled messages, tapbacks, message editing, FaceTime integration, and FindMy location services.
+  </Card>
+</CardGroup>
+
+## Key Features
+
+### Real-Time Message Processing
+
+Built on Socket.IO for reliable, low-latency message delivery with automatic reconnection and message recovery:
+
+- Event-driven architecture with typed event handlers
+- Automatic deduplication prevents message loops
+- Sequential message queue ensures delivery order
+- Reconnection with missed message recovery
+
+### Comprehensive API Modules
+
+The SDK is organized into specialized modules for different iMessage capabilities:
+
+- **Messages** - Send, receive, edit, and query messages
+- **Chats** - Manage conversations and group chats
+- **Attachments** - Handle media files and downloads
+- **Contacts** - Access contact information
+- **Polls** - Create and respond to polls
+- **FaceTime** - Initiate and manage calls
+- **iCloud** - FindMy location services
+- **Server** - Server management and diagnostics
+
+### Type Safety
+
+Fully typed with TypeScript for excellent IDE support:
+
+```typescript
+import { SDK } from '@photon-ai/advanced-imessage-kit';
+
+const sdk = SDK({
+  serverUrl: 'http://localhost:1234',
+  apiKey: process.env.API_KEY,
+  logLevel: 'info'
+});
+
+// Type-safe event handlers
+sdk.on('new-message', (message) => {
+  // message is fully typed with autocomplete
+  console.log(message.text);
+});
+```
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Chatbots & AI Assistants" icon="robot">
+    Build intelligent chatbots that respond to messages with context-aware replies using AI integration.
+  </Card>
+  
+  <Card title="Automation & Workflows" icon="bolt">
+    Automate repetitive messaging tasks, scheduled notifications, and trigger actions based on received messages.
+  </Card>
+  
+  <Card title="Analytics & Monitoring" icon="chart-line">
+    Track message metrics, analyze conversation patterns, and monitor team communications.
+  </Card>
+  
+  <Card title="Integrations" icon="plug">
+    Connect iMessage with external services, CRMs, support systems, and custom applications.
+  </Card>
+</CardGroup>
+
+## Architecture
+
+The SDK consists of two components:
+
+1. **Server** - A macOS application that interfaces with the Messages app database and handles message sending
+2. **SDK Client** - This npm package that connects to the server via HTTP and WebSocket
+
+The client SDK communicates with the server running on your Mac, which has direct access to iMessage through the Messages app.
+
+<Note>
+  The SDK requires a macOS system running the Advanced iMessage Kit server application. The server handles the actual iMessage integration while the SDK can run on any platform that supports Node.js 18+.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the SDK with npm, yarn, pnpm, or bun
+  </Card>
+  
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with a working example in 5 minutes
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Configure the SDK client for your environment
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api-reference">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

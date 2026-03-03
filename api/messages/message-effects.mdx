@@ -1,0 +1,327 @@
+---
+title: Message Effects
+description: Complete reference of iMessage effect IDs for confetti, fireworks, and more
+---
+
+Message effects add visual animations to your iMessages. These effects require Private API to be enabled on your BlueBubbles server.
+
+<Warning>
+  Message effects require:
+  - Private API enabled on BlueBubbles server
+  - iMessage (not SMS)
+  - iOS/macOS recipient with effect support
+</Warning>
+
+## Effect Types
+
+There are two categories of effects:
+
+1. **Screen Effects** - Full-screen animations (confetti, fireworks, etc.)
+2. **Bubble Effects** - Animations applied to the message bubble (gentle, loud, slam, invisible ink)
+
+## Screen Effects
+
+Screen effects fill the entire screen with animations when the message is received.
+
+### Effect IDs
+
+<ParamField path="confetti" type="string" value="com.apple.messages.effect.CKConfettiEffect">
+  Confetti animation - celebration with falling confetti
+  
+  **Use case:** Birthdays, celebrations, congratulations
+</ParamField>
+
+<ParamField path="fireworks" type="string" value="com.apple.messages.effect.CKFireworksEffect">
+  Fireworks animation - colorful fireworks explosion
+  
+  **Use case:** New Year, major celebrations, achievements
+</ParamField>
+
+<ParamField path="lasers" type="string" value="com.apple.messages.effect.CKHappyBirthdayEffect">
+  Lasers animation - colorful laser beams (also known as "Happy Birthday" effect)
+  
+  **Use case:** Birthdays, fun celebrations
+</ParamField>
+
+<ParamField path="balloons" type="string" value="com.apple.messages.effect.CKBalloonEffect">
+  Balloons animation - floating balloons
+  
+  **Use case:** Congratulations, celebrations
+</ParamField>
+
+<ParamField path="hearts" type="string" value="com.apple.messages.effect.CKHeartEffect">
+  Hearts animation - floating hearts
+  
+  **Use case:** Love messages, Valentine's Day
+</ParamField>
+
+<ParamField path="shootingStar" type="string" value="com.apple.messages.effect.CKShootingStarEffect">
+  Shooting star animation - stars shooting across the screen
+  
+  **Use case:** Wishes, dreams, aspirations
+</ParamField>
+
+<ParamField path="celebration" type="string" value="com.apple.messages.effect.CKSparklesEffect">
+  Celebration animation - sparkling stars and shimmer (also known as "Sparkles" effect)
+  
+  **Use case:** General celebrations, excitement
+</ParamField>
+
+<ParamField path="echo" type="string" value="com.apple.messages.effect.CKEchoEffect">
+  Echo animation - message duplicates and fades
+  
+  **Use case:** Emphasizing repeated messages
+</ParamField>
+
+<ParamField path="spotlight" type="string" value="com.apple.messages.effect.CKSpotlightEffect">
+  Spotlight animation - spotlight shines on the message
+  
+  **Use case:** Important announcements, drawing attention
+</ParamField>
+
+## Bubble Effects
+
+Bubble effects animate the message bubble itself with different sending styles.
+
+### Effect IDs
+
+<ParamField path="gentle" type="string" value="com.apple.MobileSMS.expressivesend.gentle">
+  Gentle effect - Message appears softly and quietly
+  
+  **Use case:** Quiet messages, late-night texts, sensitive topics
+</ParamField>
+
+<ParamField path="loud" type="string" value="com.apple.MobileSMS.expressivesend.loud">
+  Loud effect - Message appears with a shake and larger size
+  
+  **Use case:** Urgent messages, important announcements
+</ParamField>
+
+<ParamField path="slam" type="string" value="com.apple.MobileSMS.expressivesend.impact">
+  Slam effect - Message slams down with impact (also known as "Impact" effect)
+  
+  
+  **Use case:** Emphatic statements, strong reactions
+</ParamField>
+
+<ParamField path="invisibleInk" type="string" value="com.apple.MobileSMS.expressivesend.invisibleink">
+  Invisible ink effect - Message is blurred until tapped to reveal
+  
+  **Use case:** Spoilers, surprises, hidden content
+</ParamField>
+
+## Complete Reference Table
+
+| Effect Name | Effect ID | Category | Use Case |
+|-------------|-----------|----------|----------|
+| Confetti | `com.apple.messages.effect.CKConfettiEffect` | Screen | Birthdays, celebrations |
+| Fireworks | `com.apple.messages.effect.CKFireworksEffect` | Screen | Major celebrations |
+| Lasers | `com.apple.messages.effect.CKHappyBirthdayEffect` | Screen | Birthdays |
+| Balloons | `com.apple.messages.effect.CKBalloonEffect` | Screen | Congratulations |
+| Hearts | `com.apple.messages.effect.CKHeartEffect` | Screen | Love, affection |
+| Shooting Star | `com.apple.messages.effect.CKShootingStarEffect` | Screen | Wishes, dreams |
+| Celebration | `com.apple.messages.effect.CKSparklesEffect` | Screen | General celebration |
+| Echo | `com.apple.messages.effect.CKEchoEffect` | Screen | Repetition, emphasis |
+| Spotlight | `com.apple.messages.effect.CKSpotlightEffect` | Screen | Important announcements |
+| Gentle | `com.apple.MobileSMS.expressivesend.gentle` | Bubble | Quiet, soft messages |
+| Loud | `com.apple.MobileSMS.expressivesend.loud` | Bubble | Urgent, important |
+| Slam | `com.apple.MobileSMS.expressivesend.impact` | Bubble | Emphatic statements |
+| Invisible Ink | `com.apple.MobileSMS.expressivesend.invisibleink` | Bubble | Spoilers, surprises |
+
+## Usage Examples
+
+### Screen Effect Example
+
+```typescript
+import { AdvancediMessageKit } from "@bluebubbles/advanced-imessage-kit";
+
+const sdk = new AdvancediMessageKit({
+  serverUrl: "http://your-server:1234",
+  password: "your-password"
+});
+
+await sdk.connect();
+
+// Send message with confetti effect
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "Happy Birthday!",
+  effectId: "com.apple.messages.effect.CKConfettiEffect"
+});
+```
+
+### Bubble Effect Example
+
+```typescript
+// Send urgent message with loud effect
+const urgentMessage = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "MEETING IN 5 MINUTES!",
+  effectId: "com.apple.MobileSMS.expressivesend.loud"
+});
+```
+
+### Using Constants
+
+```typescript
+// Define effect constants for reusability
+const MESSAGE_EFFECTS = {
+  confetti: "com.apple.messages.effect.CKConfettiEffect",
+  fireworks: "com.apple.messages.effect.CKFireworksEffect",
+  lasers: "com.apple.messages.effect.CKHappyBirthdayEffect",
+  balloons: "com.apple.messages.effect.CKBalloonEffect",
+  hearts: "com.apple.messages.effect.CKHeartEffect",
+  shootingStar: "com.apple.messages.effect.CKShootingStarEffect",
+  celebration: "com.apple.messages.effect.CKSparklesEffect",
+  echo: "com.apple.messages.effect.CKEchoEffect",
+  spotlight: "com.apple.messages.effect.CKSpotlightEffect",
+  gentle: "com.apple.MobileSMS.expressivesend.gentle",
+  loud: "com.apple.MobileSMS.expressivesend.loud",
+  slam: "com.apple.MobileSMS.expressivesend.impact",
+  invisibleInk: "com.apple.MobileSMS.expressivesend.invisibleink"
+} as const;
+
+// Use the constants
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "Congratulations!",
+  effectId: MESSAGE_EFFECTS.balloons
+});
+```
+
+### Birthday Automation
+
+```typescript
+const BIRTHDAY_EFFECTS = [
+  "com.apple.messages.effect.CKConfettiEffect",
+  "com.apple.messages.effect.CKHappyBirthdayEffect",
+  "com.apple.messages.effect.CKBalloonEffect"
+];
+
+// Randomly select a birthday effect
+function getRandomBirthdayEffect() {
+  return BIRTHDAY_EFFECTS[Math.floor(Math.random() * BIRTHDAY_EFFECTS.length)];
+}
+
+// Send birthday message with random effect
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;friend@example.com",
+  message: "Happy Birthday! 🎉",
+  effectId: getRandomBirthdayEffect()
+});
+```
+
+### Love Message with Hearts
+
+```typescript
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;partner@example.com",
+  message: "I love you! ❤️",
+  effectId: "com.apple.messages.effect.CKHeartEffect"
+});
+```
+
+### Spoiler Alert with Invisible Ink
+
+```typescript
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;friend@example.com",
+  message: "The ending is amazing! [Tap to reveal spoiler]",
+  effectId: "com.apple.MobileSMS.expressivesend.invisibleink"
+});
+```
+
+### Important Announcement with Spotlight
+
+```typescript
+await sdk.messages.sendMessage({
+  chatGuid: "iMessage;+;team@example.com",
+  message: "🚨 URGENT: Server maintenance tonight at 10 PM",
+  effectId: "com.apple.messages.effect.CKSpotlightEffect"
+});
+```
+
+## Error Handling
+
+```typescript
+try {
+  await sdk.messages.sendMessage({
+    chatGuid: "iMessage;-;user@example.com",
+    message: "Test",
+    effectId: "com.apple.messages.effect.CKConfettiEffect"
+  });
+} catch (error) {
+  if (error.response?.status === 400) {
+    console.error("Invalid effect ID or Private API not enabled");
+  } else if (error.message.includes("Private API")) {
+    console.error("Private API is required for message effects");
+    console.error("Enable it in BlueBubbles Server settings");
+  } else {
+    console.error("Failed to send message with effect:", error.message);
+  }
+}
+```
+
+## Requirements
+
+<Note>
+  **To use message effects, ensure:**
+  
+  1. BlueBubbles server has Private API enabled
+  2. Message is being sent to an iMessage chat (not SMS)
+  3. Recipient is using iOS/macOS with effect support
+  4. You're using the correct effect ID string
+</Note>
+
+## SMS Behavior
+
+When effects are sent to SMS chats, they are ignored and the message is sent as plain text without any visual effects.
+
+## Recipient Compatibility
+
+- **iOS 10+**: Full support for all effects
+- **Older iOS**: Effects may not display; message appears normally
+- **Android/SMS**: No effect displayed; plain text message only
+
+## Testing Effects
+
+For development and testing, you can create a simple effect tester:
+
+```typescript
+const ALL_EFFECTS = [
+  { name: "Confetti", id: "com.apple.messages.effect.CKConfettiEffect" },
+  { name: "Fireworks", id: "com.apple.messages.effect.CKFireworksEffect" },
+  { name: "Lasers", id: "com.apple.messages.effect.CKHappyBirthdayEffect" },
+  { name: "Balloons", id: "com.apple.messages.effect.CKBalloonEffect" },
+  { name: "Hearts", id: "com.apple.messages.effect.CKHeartEffect" },
+  { name: "Shooting Star", id: "com.apple.messages.effect.CKShootingStarEffect" },
+  { name: "Celebration", id: "com.apple.messages.effect.CKSparklesEffect" },
+  { name: "Echo", id: "com.apple.messages.effect.CKEchoEffect" },
+  { name: "Spotlight", id: "com.apple.messages.effect.CKSpotlightEffect" },
+  { name: "Gentle", id: "com.apple.MobileSMS.expressivesend.gentle" },
+  { name: "Loud", id: "com.apple.MobileSMS.expressivesend.loud" },
+  { name: "Slam", id: "com.apple.MobileSMS.expressivesend.impact" },
+  { name: "Invisible Ink", id: "com.apple.MobileSMS.expressivesend.invisibleink" }
+];
+
+async function testAllEffects(chatGuid: string) {
+  for (const effect of ALL_EFFECTS) {
+    console.log(`Testing ${effect.name}...`);
+    await sdk.messages.sendMessage({
+      chatGuid,
+      message: `${effect.name} effect test`,
+      effectId: effect.id
+    });
+    // Wait 5 seconds between effects
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+  console.log("All effects tested!");
+}
+
+// Run the test
+await testAllEffects("iMessage;-;your-test-number@example.com");
+```
+
+## Related Methods
+
+- [sendMessage](/api/messages/send-message) - Send messages with effects

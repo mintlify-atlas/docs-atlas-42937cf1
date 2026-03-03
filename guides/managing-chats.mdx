@@ -1,0 +1,520 @@
+---
+title: 'Managing Chats'
+description: 'Learn how to get chats, create groups, and manage participants'
+---
+
+## Overview
+
+The Advanced iMessage Kit SDK provides comprehensive chat management capabilities including fetching chats, creating group conversations, managing participants, and customizing chat settings.
+
+## Getting Chats
+
+<Steps>
+  <Step title="Fetch all chats">
+    Get a list of all your iMessage conversations.
+
+    ```typescript
+    const chats = await sdk.chats.getChats();
+    
+    console.log(`You have ${chats.length} chats`);
+    
+    chats.forEach((chat, i) => {
+      console.log(`${i + 1}. ${chat.displayName || chat.chatIdentifier}`);
+    });
+    ```
+  </Step>
+
+  <Step title="Get a specific chat">
+    Retrieve detailed information about a single chat.
+
+    ```typescript
+    const chat = await sdk.chats.getChat("iMessage;-;+1234567890");
+    
+    console.log("Chat details:");
+    console.log(`  GUID: ${chat.guid}`);
+    console.log(`  Display Name: ${chat.displayName || "(none)"}`);
+    console.log(`  Participants: ${chat.participants?.length || 0}`);
+    ```
+  </Step>
+</Steps>
+
+## Chat Queries
+
+Fetch chats with specific options and filters.
+
+```typescript
+// Get chats with last message included
+const chatsWithMessages = await sdk.chats.getChats({
+  withLastMessage: true,
+  limit: 20,
+  offset: 0
+});
+
+chatsWithMessages.forEach(chat => {
+  if (chat.lastMessage) {
+    const preview = chat.lastMessage.text?.substring(0, 50) || "(no text)";
+    console.log(`${chat.displayName}: ${preview}`);
+  }
+});
+
+// Include archived chats
+const allChats = await sdk.chats.getChats({
+  withArchived: true
+});
+
+console.log(`Total chats (including archived): ${allChats.length}`);
+```
+
+## Getting Chat Details
+
+Retrieve a chat with additional related data.
+
+```typescript
+const CHAT_GUID = "iMessage;-;+1234567890";
+
+// Get chat with last message
+const chatWithLastMessage = await sdk.chats.getChat(CHAT_GUID, {
+  with: ["lastMessage"]
+});
+
+if (chatWithLastMessage.lastMessage) {
+  console.log("Last message:");
+  console.log(`  Text: ${chatWithLastMessage.lastMessage.text}`);
+  console.log(`  From: ${chatWithLastMessage.lastMessage.isFromMe ? "me" : "them"}`);
+  console.log(`  Date: ${new Date(chatWithLastMessage.lastMessage.dateCreated).toLocaleString()}`);
+}
+
+// Get chat with participants
+const chatWithParticipants = await sdk.chats.getChat(CHAT_GUID);
+
+if (chatWithParticipants.participants?.length) {
+  console.log("\nParticipants:");
+  chatWithParticipants.participants.forEach((p, i) => {
+    console.log(`  ${i + 1}. ${p.address}`);
+  });
+}
+```
+
+## Identifying Group Chats
+
+Filter and work with group conversations.
+
+```typescript
+const allChats = await sdk.chats.getChats();
+
+// Group chats have style 43, 1-on-1 chats have style 45
+const groupChats = allChats.filter(chat => "style" in chat && chat.style === 43);
+const directChats = allChats.filter(chat => "style" in chat && chat.style === 45);
+
+console.log(`Group chats: ${groupChats.length}`);
+console.log(`Direct chats: ${directChats.length}`);
+
+groupChats.forEach((group, i) => {
+  console.log(`\n${i + 1}. ${group.displayName || group.chatIdentifier}`);
+  console.log(`   GUID: ${group.guid}`);
+  console.log(`   Participants: ${group.participants?.length || 0}`);
+  
+  if (group.participants?.length) {
+    group.participants.slice(0, 3).forEach(p => {
+      console.log(`     - ${p.address}`);
+    });
+    if (group.participants.length > 3) {
+      console.log(`     ... and ${group.participants.length - 3} more`);
+    }
+  }
+});
+```
+
+<Note>
+Chat styles:
+- **43** = Group chat (3+ participants)
+- **45** = Direct message (1-on-1)
+</Note>
+
+## Creating Group Chats
+
+Create a new group conversation with multiple participants.
+
+```typescript
+const groupChat = await sdk.chats.createChat({
+  addresses: ["+1234567890", "+0987654321", "+1122334455"],
+  message: "Welcome to the team chat!"
+});
+
+console.log(`Created group: ${groupChat.guid}`);
+console.log(`Participants: ${groupChat.participants?.length}`);
+```
+
+<Tabs>
+  <Tab title="With Initial Message">
+    ```typescript
+    const chat = await sdk.chats.createChat({
+      addresses: ["+1234567890", "+0987654321"],
+      message: "Let's start planning the event!",
+      service: "iMessage"
+    });
+    
+    console.log(`Chat created: ${chat.guid}`);
+    ```
+  </Tab>
+
+  <Tab title="Without Initial Message">
+    ```typescript
+    // Create group without sending a message
+    const chat = await sdk.chats.createChat({
+      addresses: ["+1234567890", "+0987654321", "+1122334455"]
+    });
+    
+    // Send a message later
+    await sdk.messages.sendMessage({
+      chatGuid: chat.guid,
+      message: "Hello everyone!"
+    });
+    ```
+  </Tab>
+
+  <Tab title="With Effects">
+    ```typescript
+    const chat = await sdk.chats.createChat({
+      addresses: ["+1234567890", "+0987654321"],
+      message: "Happy Birthday!",
+      effectId: "com.apple.messages.effect.CKConfettiEffect",
+      method: "private-api" // Required for effects
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Managing Participants
+
+Add or remove people from group chats.
+
+### Adding Participants
+
+```typescript
+const GROUP_GUID = "iMessage;+;chat123456";
+const NEW_MEMBER = "+1234567890";
+
+try {
+  const updatedChat = await sdk.chats.addParticipant(GROUP_GUID, NEW_MEMBER);
+  
+  console.log(`Added ${NEW_MEMBER} to group`);
+  console.log(`Current members: ${updatedChat.participants?.map(p => p.address).join(", ")}`);
+} catch (error) {
+  console.error("Failed to add participant:", error.message);
+}
+```
+
+### Removing Participants
+
+```typescript
+const GROUP_GUID = "iMessage;+;chat123456";
+const MEMBER_TO_REMOVE = "+1234567890";
+
+try {
+  const updatedChat = await sdk.chats.removeParticipant(GROUP_GUID, MEMBER_TO_REMOVE);
+  
+  console.log(`Removed ${MEMBER_TO_REMOVE} from group`);
+  console.log(`Remaining members: ${updatedChat.participants?.map(p => p.address).join(", ")}`);
+} catch (error) {
+  console.error("Failed to remove participant:", error.message);
+}
+```
+
+### Leaving a Group
+
+```typescript
+const GROUP_GUID = "iMessage;+;chat123456";
+
+try {
+  await sdk.chats.leaveChat(GROUP_GUID);
+  console.log("Successfully left the group");
+} catch (error) {
+  console.error("Failed to leave group:", error.message);
+}
+```
+
+<Warning>
+Removing participants requires administrator permissions in the group. Attempting to remove someone without proper permissions will fail.
+</Warning>
+
+## Updating Chat Settings
+
+Modify chat properties like display name.
+
+```typescript
+const GROUP_GUID = "iMessage;+;chat123456";
+
+// Update group name
+const updatedChat = await sdk.chats.updateChat(GROUP_GUID, {
+  displayName: "Engineering Team"
+});
+
+console.log(`Updated group name to: ${updatedChat.displayName}`);
+```
+
+## Group Icons
+
+Set and manage group chat icons.
+
+<Steps>
+  <Step title="Set a group icon">
+    Upload an image file as the group icon.
+
+    ```typescript
+    import path from "path";
+
+    const GROUP_GUID = "iMessage;+;chat123456";
+    const iconPath = path.join(__dirname, "group-icon.png");
+
+    await sdk.chats.setGroupIcon(GROUP_GUID, iconPath);
+    console.log("Group icon updated");
+    ```
+  </Step>
+
+  <Step title="Download the group icon">
+    Retrieve the current group icon.
+
+    ```typescript
+    import fs from "fs";
+
+    const iconBuffer = await sdk.chats.getGroupIcon(GROUP_GUID);
+    
+    fs.writeFileSync("downloaded-icon.png", iconBuffer);
+    console.log("Icon downloaded");
+    ```
+  </Step>
+
+  <Step title="Remove the group icon">
+    Delete the group icon.
+
+    ```typescript
+    await sdk.chats.removeGroupIcon(GROUP_GUID);
+    console.log("Group icon removed");
+    ```
+  </Step>
+</Steps>
+
+## Chat Messages
+
+Get messages from a specific chat.
+
+```typescript
+const CHAT_GUID = "iMessage;-;+1234567890";
+
+// Get last 50 messages
+const messages = await sdk.chats.getChatMessages(CHAT_GUID, {
+  limit: 50,
+  sort: "DESC", // Most recent first
+  with: ["attachment", "handle"]
+});
+
+console.log(`Found ${messages.length} messages`);
+
+messages.forEach(msg => {
+  const sender = msg.isFromMe ? "Me" : msg.handle?.address;
+  const time = new Date(msg.dateCreated).toLocaleString();
+  const hasAttachment = msg.attachments?.length ? " 📎" : "";
+  
+  console.log(`[${time}] ${sender}: ${msg.text}${hasAttachment}`);
+});
+```
+
+### Pagination
+
+```typescript
+// Get messages in batches
+const BATCH_SIZE = 25;
+let offset = 0;
+let hasMore = true;
+
+while (hasMore) {
+  const batch = await sdk.chats.getChatMessages(CHAT_GUID, {
+    limit: BATCH_SIZE,
+    offset: offset,
+    sort: "DESC"
+  });
+  
+  console.log(`Fetched ${batch.length} messages (offset: ${offset})`);
+  
+  // Process batch
+  batch.forEach(msg => {
+    console.log(`  ${msg.text?.substring(0, 50)}`);
+  });
+  
+  offset += BATCH_SIZE;
+  hasMore = batch.length === BATCH_SIZE;
+}
+```
+
+## Marking Chats
+
+Mark chats as read or unread.
+
+```typescript
+const CHAT_GUID = "iMessage;-;+1234567890";
+
+// Mark as read
+await sdk.chats.markChatRead(CHAT_GUID);
+console.log("Chat marked as read");
+
+// Mark as unread
+await sdk.chats.markChatUnread(CHAT_GUID);
+console.log("Chat marked as unread");
+```
+
+## Deleting Chats
+
+Remove a chat from your device.
+
+```typescript
+const CHAT_GUID = "iMessage;-;+1234567890";
+
+try {
+  await sdk.chats.deleteChat(CHAT_GUID);
+  console.log("Chat deleted successfully");
+} catch (error) {
+  console.error("Failed to delete chat:", error.message);
+}
+```
+
+<Warning>
+Deleting a chat removes it from your local device only. The conversation may still exist for other participants.
+</Warning>
+
+## Typing Indicators
+
+Show typing status in a chat.
+
+```typescript
+const CHAT_GUID = "iMessage;-;+1234567890";
+
+// Start typing indicator
+await sdk.chats.startTyping(CHAT_GUID);
+console.log("Typing indicator shown");
+
+// Simulate typing for 3 seconds
+await new Promise(resolve => setTimeout(resolve, 3000));
+
+// Stop typing indicator
+await sdk.chats.stopTyping(CHAT_GUID);
+console.log("Typing indicator hidden");
+
+// Send the actual message
+await sdk.messages.sendMessage({
+  chatGuid: CHAT_GUID,
+  message: "Hello!"
+});
+```
+
+## Chat Count
+
+Get the total number of chats.
+
+```typescript
+const count = await sdk.chats.getChatCount();
+
+console.log(`Total chats: ${count.total}`);
+console.log(`Breakdown:`, count.breakdown);
+
+// Include archived chats
+const countWithArchived = await sdk.chats.getChatCount({
+  includeArchived: true
+});
+
+console.log(`Total (with archived): ${countWithArchived.total}`);
+```
+
+## Monitoring Group Events
+
+Listen for real-time group changes.
+
+```typescript
+sdk.on("group-name-change", (data) => {
+  console.log(`Group name changed to: ${data.groupTitle}`);
+  console.log(`Chat: ${data.displayName || data.guid}`);
+});
+
+sdk.on("participant-added", (data) => {
+  console.log(`Someone was added to: ${data.displayName || data.guid}`);
+});
+
+sdk.on("participant-removed", (data) => {
+  console.log(`Someone was removed from: ${data.displayName || data.guid}`);
+});
+
+sdk.on("participant-left", (data) => {
+  console.log(`Someone left: ${data.displayName || data.guid}`);
+});
+
+sdk.on("group-icon-changed", (data) => {
+  console.log(`Group icon changed: ${data.displayName || data.guid}`);
+});
+
+sdk.on("group-icon-removed", (data) => {
+  console.log(`Group icon removed: ${data.displayName || data.guid}`);
+});
+```
+
+## Chat Backgrounds
+
+Customize chat backgrounds (requires Private API).
+
+<Tabs>
+  <Tab title="Set from URL">
+    ```typescript
+    const CHAT_GUID = "iMessage;-;+1234567890";
+
+    await sdk.chats.setBackground(CHAT_GUID, "https://example.com/background.jpg");
+    console.log("Background set from URL");
+    ```
+  </Tab>
+
+  <Tab title="Set from File">
+    ```typescript
+    import path from "path";
+
+    const CHAT_GUID = "iMessage;-;+1234567890";
+    const bgPath = path.join(__dirname, "background.jpg");
+
+    await sdk.chats.setBackground(CHAT_GUID, {
+      filePath: bgPath
+    });
+    
+    console.log("Background set from file");
+    ```
+  </Tab>
+
+  <Tab title="Get Background">
+    ```typescript
+    const background = await sdk.chats.getBackground(CHAT_GUID);
+
+    console.log(`Has background: ${background.hasBackground}`);
+    if (background.imageUrl) {
+      console.log(`Image URL: ${background.imageUrl}`);
+    }
+    ```
+  </Tab>
+
+  <Tab title="Remove Background">
+    ```typescript
+    await sdk.chats.removeBackground(CHAT_GUID);
+    console.log("Background removed");
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+Chat backgrounds require the Private API feature to be enabled on your server.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Working with Attachments" icon="paperclip" href="/guides/working-with-attachments">
+    Send and receive files, images, and media
+  </Card>
+  <Card title="Real-Time Events" icon="bolt" href="/guides/real-time-events">
+    Learn about all available events
+  </Card>
+</CardGroup>

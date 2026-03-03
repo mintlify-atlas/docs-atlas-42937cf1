@@ -1,0 +1,165 @@
+---
+title: 'Chat Events'
+description: 'Events related to chat read status changes'
+icon: 'comments'
+---
+
+## Overview
+
+Chat events are emitted when chat-level changes occur, such as when a chat's read status changes.
+
+## Events
+
+### chat-read-status-changed
+
+Emitted when a chat's read status changes (marked as read or unread).
+
+<ResponseField name="data" type="object">
+  Chat read status change information
+  
+  <Expandable title="properties">
+    <ResponseField name="chatGuid" type="string" required>
+      The unique identifier of the chat whose read status changed
+    </ResponseField>
+    
+    <ResponseField name="read" type="boolean" required>
+      Whether the chat is now marked as read (`true`) or unread (`false`)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Basic Usage
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('chat-read-status-changed', (data) => {
+  const status = data.read ? 'read' : 'unread';
+  console.log(`Chat ${data.chatGuid} marked as ${status}`);
+});
+
+await client.connect();
+```
+
+```typescript Track Unread Chats
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+const unreadChats = new Set<string>();
+
+client.on('chat-read-status-changed', (data) => {
+  if (data.read) {
+    unreadChats.delete(data.chatGuid);
+    console.log(`Chat marked as read. ${unreadChats.size} unread chats remaining.`);
+  } else {
+    unreadChats.add(data.chatGuid);
+    console.log(`Chat marked as unread. Total unread: ${unreadChats.size}`);
+  }
+});
+
+// Also track new messages as unread
+client.on('new-message', (message) => {
+  if (!message.isFromMe && message.chats?.[0]?.guid) {
+    unreadChats.add(message.chats[0].guid);
+  }
+});
+
+await client.connect();
+```
+
+```typescript Get Chat Details
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('chat-read-status-changed', async (data) => {
+  // Fetch full chat details
+  try {
+    const chat = await client.chats.getChat(data.chatGuid);
+    const chatName = chat.displayName || 'Unknown';
+    const status = data.read ? 'read' : 'unread';
+    
+    console.log(`"${chatName}" marked as ${status}`);
+  } catch (error) {
+    console.error('Failed to fetch chat details:', error);
+  }
+});
+
+await client.connect();
+```
+
+```typescript Notification System
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('chat-read-status-changed', async (data) => {
+  if (!data.read) {
+    // Chat marked as unread - could be manual or new message
+    try {
+      const chat = await client.chats.getChat(data.chatGuid);
+      
+      // Send desktop notification
+      console.log(`⚠️  ${chat.displayName} has unread messages`);
+      
+      // Or integrate with notification service
+      // await notificationService.send({
+      //   title: 'Unread Messages',
+      //   body: `${chat.displayName} has unread messages`
+      // });
+    } catch (error) {
+      console.error('Failed to process unread notification:', error);
+    }
+  }
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+## Event Methods
+
+### on()
+
+Register a listener that will be called every time the event is emitted.
+
+```typescript
+client.on('chat-read-status-changed', (data) => {
+  console.log(data);
+});
+```
+
+### once()
+
+Register a listener that will be called only once, then automatically removed.
+
+```typescript
+client.once('chat-read-status-changed', (data) => {
+  console.log('First chat read status change:', data);
+});
+```
+
+### off()
+
+Remove a specific listener from an event.
+
+```typescript
+const handler = (data) => {
+  console.log(data);
+};
+
+client.on('chat-read-status-changed', handler);
+
+// Later, remove the listener
+client.off('chat-read-status-changed', handler);
+```
+
+<Note>
+You must pass the exact same function reference to `off()` that was passed to `on()`. Anonymous functions cannot be removed.
+</Note>
+
+## Related
+
+- [Chats API](/api/chats/get-chats) - Manage chats and their properties
+- [Message Events](/api/events/message-events) - Handle incoming messages

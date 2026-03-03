@@ -1,0 +1,93 @@
+---
+title: 'Contact card sharing'
+description: 'Share contact cards and check sharing status in chats'
+keywords: ['contact card', 'share', 'shareContactCard', 'shouldShareContact', 'chat']
+---
+
+## shareContactCard()
+
+Shares your contact card in a specific chat.
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  The GUID of the chat where you want to share your contact card.
+</ParamField>
+
+### Returns
+
+<ResponseField name="void" type="void">
+  This method completes without returning a value.
+</ResponseField>
+
+### Example
+
+```typescript
+const chatGuid = 'iMessage;-;+1234567890';
+await client.contact.shareContactCard(chatGuid);
+console.log('Contact card shared successfully');
+```
+
+<Info>The contact card shared is your own contact information associated with the iMessage account.</Info>
+
+### Use cases
+
+- Automatically share contact information in new conversations
+- Respond to contact information requests
+- Include contact details in automated workflows
+
+---
+
+## shouldShareContact()
+
+Checks whether you should share your contact card in a specific chat based on the chat's current state.
+
+### Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  The GUID of the chat to check contact sharing status for.
+</ParamField>
+
+### Returns
+
+<ResponseField name="shouldShare" type="boolean" required>
+  `true` if you should share your contact card, `false` otherwise.
+</ResponseField>
+
+### Example
+
+```typescript
+const chatGuid = 'iMessage;-;+1234567890';
+const shouldShare = await client.contact.shouldShareContact(chatGuid);
+
+if (shouldShare) {
+  await client.contact.shareContactCard(chatGuid);
+  console.log('Contact card shared');
+} else {
+  console.log('Contact card already shared or not needed');
+}
+```
+
+### Smart contact sharing workflow
+
+```typescript
+// Automatically share contact card when appropriate
+client.on('message:received', async (message) => {
+  const { chatGuid } = message;
+  
+  const shouldShare = await client.contact.shouldShareContact(chatGuid);
+  
+  if (shouldShare) {
+    await client.contact.shareContactCard(chatGuid);
+    console.log(`Shared contact card in chat: ${chatGuid}`);
+  }
+});
+```
+
+<Tip>Use this method before calling `shareContactCard()` to avoid redundant sharing attempts.</Tip>
+
+### Best practices
+
+- Check `shouldShareContact()` before attempting to share to avoid unnecessary API calls
+- Contact card sharing is typically done once per conversation
+- Consider privacy implications when automatically sharing contact information

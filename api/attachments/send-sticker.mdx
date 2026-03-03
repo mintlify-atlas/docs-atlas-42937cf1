@@ -1,0 +1,232 @@
+---
+title: "sendSticker"
+description: "Send standalone stickers or sticker tapbacks on messages"
+---
+
+## Method Signature
+
+```typescript
+async sendSticker(options: SendStickerOptions): Promise<MessageResponse>
+```
+
+Send a sticker to an iMessage conversation. Stickers can be sent as standalone messages or placed on existing messages as tapbacks.
+
+<Note>
+  Stickers require the Private API to be enabled on your BlueBubbles server.
+</Note>
+
+## Parameters
+
+<ParamField path="options" type="SendStickerOptions" required>
+  Configuration object for sending the sticker
+  
+  <Expandable title="SendStickerOptions">
+    <ParamField path="chatGuid" type="string" required>
+      The GUID of the chat to send the sticker to
+    </ParamField>
+    
+    <ParamField path="filePath" type="string" required>
+      Absolute path to the sticker image file (PNG, HEIC, etc.)
+    </ParamField>
+    
+    <ParamField path="fileName" type="string">
+      Optional custom filename. If not provided, uses the basename of `filePath`
+    </ParamField>
+    
+    <ParamField path="selectedMessageGuid" type="string">
+      GUID of a message to place the sticker on. If omitted, sends as a standalone sticker message
+    </ParamField>
+    
+    <ParamField path="stickerX" type="number">
+      Horizontal position (0.0 - 1.0, relative to message bubble). Default: `0.5` (center). Only used when `selectedMessageGuid` is set
+    </ParamField>
+    
+    <ParamField path="stickerY" type="number">
+      Vertical position (0.0 - 1.0, relative to message bubble). Default: `0.5` (center). Only used when `selectedMessageGuid` is set
+    </ParamField>
+    
+    <ParamField path="stickerScale" type="number">
+      Scale factor (0.0 - 1.0). Default: `0.75`. Only used when `selectedMessageGuid` is set
+    </ParamField>
+    
+    <ParamField path="stickerRotation" type="number">
+      Rotation in radians. Default: `0`. Only used when `selectedMessageGuid` is set
+    </ParamField>
+    
+    <ParamField path="stickerWidth" type="number">
+      Width in points. Default: `300`. Only used when `selectedMessageGuid` is set
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="MessageResponse" type="object">
+  The sent message object containing the sticker metadata
+  
+  <Expandable title="MessageResponse properties">
+    <ResponseField name="guid" type="string">
+      Unique identifier for the sent sticker message
+    </ResponseField>
+    
+    <ResponseField name="tempGuid" type="string">
+      Temporary GUID assigned before the message is sent
+    </ResponseField>
+    
+    <ResponseField name="chatGuid" type="string">
+      The chat where the sticker was sent
+    </ResponseField>
+    
+    <ResponseField name="dateCreated" type="number">
+      Timestamp when the sticker was sent
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Send Standalone Sticker
+
+Send a sticker as a regular message in the conversation.
+
+```typescript
+const message = await client.attachment.sendSticker({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/path/to/sticker.png"
+});
+
+console.log(`Sticker sent: ${message.guid}`);
+```
+
+### Send Sticker on Message (Tapback)
+
+Place a sticker on an existing message with default positioning.
+
+```typescript
+const message = await client.attachment.sendSticker({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/path/to/sticker.png",
+  selectedMessageGuid: "message-to-react-to"
+});
+```
+
+### Custom Sticker Positioning
+
+Place a sticker with precise control over position, size, and rotation.
+
+```typescript
+const message = await client.attachment.sendSticker({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/path/to/sticker.png",
+  selectedMessageGuid: "message-guid",
+  stickerX: 0.75,        // 75% from left (right side)
+  stickerY: 0.25,        // 25% from top (upper area)
+  stickerScale: 0.5,     // 50% of default size
+  stickerRotation: Math.PI / 4,  // 45 degrees (π/4 radians)
+  stickerWidth: 200      // 200 points wide
+});
+```
+
+### Sticker Pack Implementation
+
+```typescript
+const stickerPack = [
+  "/stickers/heart.png",
+  "/stickers/thumbs-up.png",
+  "/stickers/fire.png"
+];
+
+// Send a random sticker from the pack
+const randomSticker = stickerPack[Math.floor(Math.random() * stickerPack.length)];
+
+await client.attachment.sendSticker({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: randomSticker
+});
+```
+
+### Animated Sticker Placement
+
+Place stickers with varying rotations for visual effect.
+
+```typescript
+const rotations = [0, Math.PI / 6, -Math.PI / 6]; // 0°, 30°, -30°
+
+for (const rotation of rotations) {
+  await client.attachment.sendSticker({
+    chatGuid: "iMessage;+;chat123456",
+    filePath: "/path/to/star.png",
+    selectedMessageGuid: "message-guid",
+    stickerRotation: rotation,
+    stickerScale: 0.6
+  });
+  
+  await new Promise(resolve => setTimeout(resolve, 500)); // Delay between stickers
+}
+```
+
+## Positioning Guide
+
+### X and Y Coordinates
+
+- Values range from `0.0` to `1.0`
+- `(0, 0)` = top-left corner of the message bubble
+- `(1, 1)` = bottom-right corner of the message bubble
+- `(0.5, 0.5)` = center (default)
+
+```
+(0,0)  ───────────  (1,0)
+  │                    │
+  │    (0.5, 0.5)      │
+  │        ●           │
+  │                    │
+(0,1)  ───────────  (1,1)
+```
+
+### Scale
+
+- Range: `0.0` to `1.0`
+- `0.75` = 75% of original size (default)
+- `1.0` = 100% (full size)
+- `0.5` = 50% (half size)
+
+### Rotation
+
+- Value in radians
+- `0` = no rotation (default)
+- `Math.PI / 2` = 90° clockwise
+- `Math.PI` = 180°
+- `-Math.PI / 2` = 90° counter-clockwise
+
+## Behavior
+
+- If the specified chat doesn't exist, it will be created automatically
+- Stickers require Private API to be enabled on BlueBubbles server
+- The method is queued to ensure messages are sent in order
+- When `selectedMessageGuid` is omitted, the sticker is sent as a standalone message
+- When `selectedMessageGuid` is provided, the sticker appears as a tapback on that message
+
+## Error Handling
+
+```typescript
+try {
+  const message = await client.attachment.sendSticker({
+    chatGuid: "iMessage;+;chat123456",
+    filePath: "/path/to/sticker.png"
+  });
+} catch (error) {
+  if (error.response?.status === 400) {
+    console.error('Private API may not be enabled');
+  } else if (error.code === 'ENOENT') {
+    console.error('Sticker file not found');
+  } else {
+    console.error('Failed to send sticker:', error);
+  }
+}
+```
+
+## See Also
+
+- [Send Attachment](/api/attachments/send-attachment) - Sending file attachments
+- [Tapbacks](/api/messages/send-reaction) - Sending emoji reactions
+- [Private API Setup](/configuration) - Enabling Private API features

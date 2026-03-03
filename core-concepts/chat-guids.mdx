@@ -1,0 +1,200 @@
+---
+title: Chat GUIDs
+description: Understanding chatGuid format and identifiers in Advanced iMessage Kit
+---
+
+## Overview
+
+`chatGuid` is the unique identifier for a conversation in Advanced iMessage Kit. It follows a specific format that determines how messages are routed through iMessage or SMS.
+
+## Format Structure
+
+The `chatGuid` follows the pattern: `service;type;identifier`
+
+```
+service;type;identifier
+   │     │       └─ Phone number, email, or chat ID
+   │     └───────── Connection type (- or +)
+   └─────────────── Service type (iMessage, SMS, or any)
+```
+
+## Chat GUID Types
+
+### iMessage Direct Message
+
+For one-on-one iMessage conversations using phone numbers or email addresses:
+
+```typescript
+// Phone number
+const chatGuid = "iMessage;-;+1234567890";
+
+// Email address
+const chatGuid = "iMessage;-;email@example.com";
+```
+
+### SMS Direct Message
+
+For SMS conversations (when iMessage is not available):
+
+```typescript
+const chatGuid = "SMS;-;+1234567890";
+```
+
+### Group Chat
+
+For group conversations, use the `+` connector with a chat identifier:
+
+```typescript
+const chatGuid = "iMessage;+;chat123456789";
+```
+
+<Note>
+  Group chat identifiers are system-generated. You can retrieve them using `sdk.chats.getChats()` to get the `guid` field from existing group conversations.
+</Note>
+
+### Auto-Detect Service
+
+Use `any` to let the SDK automatically detect whether to use iMessage or SMS:
+
+```typescript
+const chatGuid = "any;-;+1234567890";
+```
+
+<Warning>
+  The `any` service type only works for direct messages (DM), not group chats. The SDK will check iMessage availability and fall back to SMS if needed.
+</Warning>
+
+## How to Get Chat GUIDs
+
+### From Phone Number or Email
+
+If you know the recipient's contact information, construct the `chatGuid` directly:
+
+```typescript
+import { SDK } from "@photon-ai/advanced-imessage-kit";
+
+const sdk = SDK();
+await sdk.connect();
+
+// Construct chatGuid from phone number
+const chatGuid = "any;-;+1234567890";
+
+await sdk.messages.sendMessage({
+  chatGuid,
+  message: "Hello!",
+});
+```
+
+### From Existing Chats
+
+Retrieve `chatGuid` from your existing conversations:
+
+```typescript
+const chats = await sdk.chats.getChats();
+
+for (const chat of chats) {
+  console.log("Chat GUID:", chat.guid);
+  console.log("Display Name:", chat.displayName);
+  console.log("Identifier:", chat.chatIdentifier);
+}
+```
+
+### From Incoming Messages
+
+Extract `chatGuid` from received messages:
+
+```typescript
+sdk.on("new-message", (message) => {
+  console.log("Chat GUID:", message.chats[0]?.guid);
+  console.log("Sender:", message.handle?.address);
+});
+```
+
+## Workflow Diagram
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Phone / Email  │────▶│  Build chatGuid │────▶│  Send Message   │
+│  +1234567890    │     │ any;-;+123...   │     │  sendMessage()  │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   getChats()    │────▶│  Get chat.guid  │────▶│  Use for other  │
+│   List chats    │     │                 │     │  operations     │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  sendMessage()  │────▶│ Get message.guid│────▶│  edit/unsend    │
+│   Send message  │     │                 │     │  sendReaction   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+## Service Availability Check
+
+Before sending, you can check if a contact supports iMessage:
+
+```typescript
+const address = "+1234567890";
+
+const hasIMessage = await sdk.handles.getHandleAvailability(
+  address,
+  "imessage"
+);
+
+const chatGuid = hasIMessage 
+  ? `iMessage;-;${address}` 
+  : `SMS;-;${address}`;
+
+await sdk.messages.sendMessage({
+  chatGuid,
+  message: "Hello!",
+});
+```
+
+## Examples
+
+### Send to New Contact
+
+```typescript
+// SDK auto-creates the chat if it doesn't exist
+await sdk.messages.sendMessage({
+  chatGuid: "any;-;+1234567890",
+  message: "Hi, this is John",
+});
+```
+
+### Send to Existing Group
+
+```typescript
+const chats = await sdk.chats.getChats();
+const groups = chats.filter((chat) => chat.style === 43);
+
+if (groups.length > 0) {
+  await sdk.messages.sendMessage({
+    chatGuid: groups[0].guid, // e.g., "iMessage;+;chat123456789"
+    message: "Hello everyone!",
+  });
+}
+```
+
+### Find Chat by Participant
+
+```typescript
+const chats = await sdk.chats.getChats({
+  withLastMessage: true,
+});
+
+const targetChat = chats.find((chat) =>
+  chat.participants?.some((p) => p.address === "+1234567890")
+);
+
+if (targetChat) {
+  console.log("Found chat:", targetChat.guid);
+}
+```
+
+## Related Methods
+
+- [Get Chats](/api/chats/get-chats) - Retrieve existing conversations
+- [Check Service Availability](/api/handles/check-availability) - Verify iMessage support
+- [Send Messages](/api/messages/send-message) - Send messages using chatGuid

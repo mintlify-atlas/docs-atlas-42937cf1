@@ -1,0 +1,666 @@
+---
+title: 'Best Practices'
+description: 'Best practices for resource management, deduplication, and error handling'
+---
+
+## Overview
+
+Follow these best practices to build reliable, efficient, and maintainable applications with the Advanced iMessage Kit SDK.
+
+## Connection Management
+
+### Always Wait for Ready
+
+Never send messages or make API calls before the SDK is ready.
+
+<CodeGroup>
+```typescript Good
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+sdk.on("ready", async () => {
+  // Safe to use SDK now
+  await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "Hello!"
+  });
+});
+
+await sdk.connect();
+```
+
+```typescript Bad
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+// Don't do this - SDK not ready!
+await sdk.messages.sendMessage({
+  chatGuid: CHAT_GUID,
+  message: "Hello!"
+});
+
+await sdk.connect();
+```
+</CodeGroup>
+
+### Graceful Shutdown
+
+Always close the SDK connection when your application exits.
+
+```typescript
+process.on("SIGINT", async () => {
+  console.log("\nShutting down gracefully...");
+  await sdk.close();
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  console.log("\nShutting down gracefully...");
+  await sdk.close();
+  process.exit(0);
+});
+```
+
+### Monitor Connection State
+
+Handle disconnections and reconnections gracefully.
+
+```typescript
+sdk.on("disconnect", () => {
+  console.log("Disconnected - SDK will auto-reconnect");
+  // Pause operations if needed
+});
+
+sdk.on("ready", () => {
+  console.log("Connected and ready");
+  // Resume operations
+});
+
+sdk.socket.io.on("reconnect", (attempt) => {
+  console.log(`Reconnected after ${attempt} attempt(s)`);
+});
+```
+
+<Tip>
+The SDK automatically reconnects with exponential backoff. You don't need to manually reconnect.
+</Tip>
+
+## Message Deduplication
+
+### Understanding Built-in Deduplication
+
+The SDK automatically deduplicates `new-message` events using message GUIDs.
+
+```typescript
+// The SDK maintains an internal set of processed message GUIDs
+// Duplicate messages are automatically filtered
+
+sdk.on("new-message", (message) => {
+  // This will only fire once per unique message.guid
+  console.log(`New message: ${message.text}`);
+});
+```
+
+### Managing Memory in Long-Running Apps
+
+Clear processed message records periodically to prevent memory leaks.
+
+```typescript
+// Clear old records every hour
+setInterval(() => {
+  const beforeCount = sdk.getProcessedMessageCount();
+  sdk.clearProcessedMessages(1000); // Keep last 1000 messages
+  const afterCount = sdk.getProcessedMessageCount();
+  
+  console.log(`Cleared ${beforeCount - afterCount} old message records`);
+}, 60 * 60 * 1000);
+```
+
+### Avoiding Reply Loops
+
+Always check `isFromMe` to prevent auto-reply loops.
+
+<CodeGroup>
+```typescript Good
+sdk.on("new-message", async (message) => {
+  // Skip our own messages
+  if (message.isFromMe) return;
+  
+  // Safe to auto-reply
+  await sdk.messages.sendMessage({
+    chatGuid: message.chats[0].guid,
+    message: "Auto-reply"
+  });
+});
+```
+
+```typescript Bad
+sdk.on("new-message", async (message) => {
+  // This will create an infinite loop!
+  await sdk.messages.sendMessage({
+    chatGuid: message.chats[0].guid,
+    message: "Auto-reply"
+  });
+});
+```
+</CodeGroup>
+
+## Error Handling
+
+### Always Use Try-Catch
+
+Wrap SDK calls in try-catch blocks.
+
+```typescript
+try {
+  const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "Hello!"
+  });
+  console.log("Message sent:", message.guid);
+} catch (error) {
+  console.error("Failed to send message:", error.message);
+  
+  // Handle specific errors
+  if (error.response?.status === 404) {
+    console.error("Chat not found");
+  } else if (error.response?.status === 429) {
+    console.error("Rate limited");
+  }
+}
+```
+
+### Listen for Error Events
+
+Monitor SDK-level errors.
+
+```typescript
+sdk.on("error", (error) => {
+  console.error("SDK Error:", error.message);
+  
+  // Log to error tracking service
+  // Sentry.captureException(error);
+});
+
+sdk.on("message-send-error", (message) => {
+  console.error(`Failed to send: ${message.text}`);
+  console.error(`Error code: ${message.error}`);
+});
+```
+
+### Validate Inputs
+
+Validate data before sending.
+
+```typescript
+async function sendMessage(chatGuid: string, text: string) {
+  // Validate inputs
+  if (!chatGuid) {
+    throw new Error("chatGuid is required");
+  }
+  
+  if (!text || text.trim().length === 0) {
+    throw new Error("Message text cannot be empty");
+  }
+  
+  if (text.length > 10000) {
+    throw new Error("Message text too long");
+  }
+  
+  // Send message
+  return await sdk.messages.sendMessage({ chatGuid, message: text });
+}
+```
+
+## Resource Management
+
+### Sequential Message Delivery
+
+The SDK automatically queues messages for sequential delivery.
+
+```typescript
+// These will be sent in order automatically
+const promises = [
+  sdk.messages.sendMessage({ chatGuid: CHAT_GUID, message: "First" }),
+  sdk.messages.sendMessage({ chatGuid: CHAT_GUID, message: "Second" }),
+  sdk.messages.sendMessage({ chatGuid: CHAT_GUID, message: "Third" })
+];
+
+// Wait for all to complete
+await Promise.all(promises);
+```
+
+<Note>
+The SDK uses an internal queue (`enqueueSend`) to ensure messages are sent sequentially, preventing race conditions.
+</Note>
+
+### File Cleanup
+
+Clean up temporary files after sending attachments.
+
+```typescript
+import fs from "fs";
+import path from "path";
+
+const tempFile = path.join("/tmp", "temp-image.jpg");
+
+try {
+  // Send attachment
+  await sdk.attachments.sendAttachment({
+    chatGuid: CHAT_GUID,
+    filePath: tempFile
+  });
+  
+  console.log("Attachment sent");
+} finally {
+  // Clean up
+  if (fs.existsSync(tempFile)) {
+    fs.unlinkSync(tempFile);
+  }
+}
+```
+
+### Limit Concurrent Operations
+
+Avoid overwhelming the server with too many concurrent requests.
+
+```typescript
+import pLimit from "p-limit";
+
+// Limit to 5 concurrent downloads
+const limit = pLimit(5);
+
+const attachments = [/* array of attachment GUIDs */];
+
+const downloads = attachments.map(guid => 
+  limit(async () => {
+    const buffer = await sdk.attachments.downloadAttachment(guid);
+    return { guid, buffer };
+  })
+);
+
+const results = await Promise.all(downloads);
+```
+
+## Performance Optimization
+
+### Batch API Calls
+
+When fetching data, use pagination and limits.
+
+```typescript
+// Good - fetch in batches
+const messages = await sdk.messages.getMessages({
+  chatGuid: CHAT_GUID,
+  limit: 50,
+  offset: 0
+});
+
+// Bad - fetching all messages at once (slow)
+const allMessages = await sdk.messages.getMessages({
+  chatGuid: CHAT_GUID
+  // No limit = potentially thousands of messages
+});
+```
+
+### Cache Chat Data
+
+Cache frequently accessed chat information.
+
+```typescript
+const chatCache = new Map();
+
+async function getChatWithCache(chatGuid: string) {
+  if (chatCache.has(chatGuid)) {
+    return chatCache.get(chatGuid);
+  }
+  
+  const chat = await sdk.chats.getChat(chatGuid);
+  chatCache.set(chatGuid, chat);
+  
+  // Clear cache after 5 minutes
+  setTimeout(() => chatCache.delete(chatGuid), 5 * 60 * 1000);
+  
+  return chat;
+}
+```
+
+### Use Selective Data Loading
+
+Only fetch data you need.
+
+```typescript
+// Good - only fetch attachments when needed
+const messages = await sdk.messages.getMessages({
+  chatGuid: CHAT_GUID,
+  limit: 50,
+  with: ["attachment"] // Only include attachments
+});
+
+// Bad - fetching all related data unnecessarily
+const messagesWithEverything = await sdk.messages.getMessages({
+  chatGuid: CHAT_GUID,
+  limit: 50,
+  with: ["attachment", "attributedBody", "messageSummaryInfo", "payloadData"]
+});
+```
+
+## Logging and Debugging
+
+### Configure Log Levels
+
+Set appropriate log levels for different environments.
+
+```typescript
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key",
+  logLevel: process.env.NODE_ENV === "production" ? "error" : "debug",
+  logToFile: true
+});
+```
+
+**Available log levels:**
+- `debug` - Verbose logging for development
+- `info` - Standard operational messages
+- `warn` - Warning messages
+- `error` - Error messages only
+
+### Implement Structured Logging
+
+Log events in a structured format.
+
+```typescript
+sdk.on("new-message", (message) => {
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    event: "new-message",
+    messageGuid: message.guid,
+    sender: message.handle?.address,
+    chatGuid: message.chats?.[0]?.guid,
+    hasAttachments: !!message.attachments?.length,
+    isFromMe: message.isFromMe
+  }));
+});
+```
+
+## Security Best Practices
+
+### Protect API Keys
+
+Never hardcode API keys in your source code.
+
+<CodeGroup>
+```typescript Good
+import dotenv from "dotenv";
+dotenv.config();
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: process.env.SERVER_URL,
+  apiKey: process.env.API_KEY
+});
+```
+
+```typescript Bad
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "my-secret-api-key-123" // Never do this!
+});
+```
+</CodeGroup>
+
+### Validate Chat GUIDs
+
+Sanitize and validate chat GUIDs from user input.
+
+```typescript
+function isValidChatGuid(guid: string): boolean {
+  // Chat GUIDs follow patterns like:
+  // - "iMessage;-;+1234567890"
+  // - "iMessage;+;chat123456"
+  // - "SMS;-;+1234567890"
+  
+  return /^(iMessage|SMS);[\-+];.+$/.test(guid);
+}
+
+const userProvidedGuid = getUserInput();
+
+if (!isValidChatGuid(userProvidedGuid)) {
+  throw new Error("Invalid chat GUID");
+}
+```
+
+### Sanitize Message Content
+
+Validate and sanitize message content.
+
+```typescript
+function sanitizeMessage(text: string): string {
+  // Remove null bytes
+  let sanitized = text.replace(/\0/g, "");
+  
+  // Trim whitespace
+  sanitized = sanitized.trim();
+  
+  // Limit length
+  if (sanitized.length > 10000) {
+    sanitized = sanitized.substring(0, 10000);
+  }
+  
+  return sanitized;
+}
+
+const userMessage = sanitizeMessage(getUserInput());
+
+await sdk.messages.sendMessage({
+  chatGuid: CHAT_GUID,
+  message: userMessage
+});
+```
+
+## Testing
+
+### Mock the SDK in Tests
+
+Use dependency injection for testability.
+
+```typescript
+import { AdvancedIMessageKit } from "advanced-imessage-kit";
+
+class MessageService {
+  constructor(private sdk: AdvancedIMessageKit) {}
+  
+  async sendWelcome(chatGuid: string) {
+    return await this.sdk.messages.sendMessage({
+      chatGuid,
+      message: "Welcome!"
+    });
+  }
+}
+
+// In tests
+const mockSdk = {
+  messages: {
+    sendMessage: jest.fn().mockResolvedValue({ guid: "test-guid" })
+  }
+};
+
+const service = new MessageService(mockSdk as any);
+await service.sendWelcome("test-chat");
+
+expect(mockSdk.messages.sendMessage).toHaveBeenCalledWith({
+  chatGuid: "test-chat",
+  message: "Welcome!"
+});
+```
+
+### Test Error Scenarios
+
+Test how your app handles errors.
+
+```typescript
+test("handles message send failure", async () => {
+  const mockSdk = {
+    messages: {
+      sendMessage: jest.fn().mockRejectedValue(new Error("Network error"))
+    }
+  };
+  
+  const service = new MessageService(mockSdk as any);
+  
+  await expect(service.sendWelcome("test-chat")).rejects.toThrow("Network error");
+});
+```
+
+## Monitoring and Observability
+
+### Track Message Metrics
+
+```typescript
+let messagesSent = 0;
+let messagesFailed = 0;
+
+sdk.on("new-message", (message) => {
+  if (message.isFromMe) {
+    messagesSent++;
+  }
+});
+
+sdk.on("message-send-error", () => {
+  messagesFailed++;
+});
+
+// Report metrics every minute
+setInterval(() => {
+  console.log(`Messages sent: ${messagesSent}`);
+  console.log(`Messages failed: ${messagesFailed}`);
+  console.log(`Success rate: ${(messagesSent / (messagesSent + messagesFailed) * 100).toFixed(2)}%`);
+}, 60 * 1000);
+```
+
+### Monitor Connection Health
+
+```typescript
+let reconnectCount = 0;
+let lastDisconnect: Date | null = null;
+
+sdk.on("disconnect", () => {
+  lastDisconnect = new Date();
+});
+
+sdk.socket.io.on("reconnect", () => {
+  reconnectCount++;
+  
+  if (lastDisconnect) {
+    const downtime = Date.now() - lastDisconnect.getTime();
+    console.log(`Downtime: ${downtime}ms`);
+  }
+});
+```
+
+## Common Pitfalls
+
+### Don't Block the Event Loop
+
+<CodeGroup>
+```typescript Good
+sdk.on("new-message", async (message) => {
+  // Use async/await properly
+  try {
+    await processMessage(message);
+  } catch (error) {
+    console.error(error);
+  }
+});
+```
+
+```typescript Bad
+sdk.on("new-message", (message) => {
+  // Blocking synchronous operation
+  const result = heavyComputationSync(message);
+  // This blocks the event loop!
+});
+```
+</CodeGroup>
+
+### Don't Ignore Attachment Limits
+
+```typescript
+import fs from "fs";
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+
+async function sendAttachment(filePath: string) {
+  const stats = fs.statSync(filePath);
+  
+  if (stats.size > MAX_FILE_SIZE) {
+    throw new Error("File too large");
+  }
+  
+  return await sdk.attachments.sendAttachment({
+    chatGuid: CHAT_GUID,
+    filePath
+  });
+}
+```
+
+### Don't Assume Message Order
+
+While the SDK queues sends, received messages may arrive out of order.
+
+```typescript
+sdk.on("new-message", (message) => {
+  // Sort by timestamp if order matters
+  messages.push(message);
+  messages.sort((a, b) => a.dateCreated - b.dateCreated);
+});
+```
+
+## Production Checklist
+
+<Steps>
+  <Step title="Environment Configuration">
+    - [ ] API keys stored in environment variables
+    - [ ] Log level set appropriately
+    - [ ] Server URL configurable
+  </Step>
+
+  <Step title="Error Handling">
+    - [ ] All SDK calls wrapped in try-catch
+    - [ ] Error events monitored
+    - [ ] Graceful degradation implemented
+  </Step>
+
+  <Step title="Resource Management">
+    - [ ] Connection properly closed on exit
+    - [ ] Processed messages cleared periodically
+    - [ ] Temporary files cleaned up
+  </Step>
+
+  <Step title="Monitoring">
+    - [ ] Metrics tracked and logged
+    - [ ] Connection health monitored
+    - [ ] Error tracking service integrated
+  </Step>
+
+  <Step title="Testing">
+    - [ ] Unit tests for message handling
+    - [ ] Error scenarios tested
+    - [ ] Integration tests for key flows
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/api-reference">
+    Explore the complete API documentation
+  </Card>
+  <Card title="Examples" icon="code" href="/examples">
+    Browse example implementations
+  </Card>
+</CardGroup>

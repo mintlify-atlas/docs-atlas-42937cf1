@@ -1,0 +1,293 @@
+---
+title: sendReaction
+description: Send a tapback reaction to a message
+---
+
+## Method Signature
+
+```typescript
+await sdk.messages.sendReaction(options: {
+  chatGuid: string;
+  messageGuid: string;
+  reaction: string;
+  partIndex?: number;
+}): Promise<MessageResponse>
+```
+
+Sends a tapback reaction (like, love, laugh, etc.) to a specific message. Tapbacks are iMessage's quick reaction feature.
+
+<Note>
+Tapbacks only work with iMessage chats. SMS recipients will receive a text message like "Liked \"message text\"".
+</Note>
+
+## Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  The unique identifier for the chat where the message exists
+</ParamField>
+
+<ParamField path="messageGuid" type="string" required>
+  The unique identifier of the message to react to
+</ParamField>
+
+<ParamField path="reaction" type="string" required>
+  The reaction type. Must be one of:
+  
+  - `"love"` - Heart
+  - `"like"` - Thumbs up
+  - `"dislike"` - Thumbs down
+  - `"laugh"` - "Haha"
+  - `"emphasize"` - Double exclamation marks "!!"
+  - `"question"` - Question mark
+  
+  To **remove** a reaction, prefix with a minus sign:
+  - `"-love"`, `"-like"`, `"-dislike"`, `"-laugh"`, `"-emphasize"`, `"-question"`
+</ParamField>
+
+<ParamField path="partIndex" type="number" default="0">
+  The part index for multi-part messages. Use `0` for single-part messages (most common).
+</ParamField>
+
+## Response
+
+Returns a `MessageResponse` object representing the reaction:
+
+<ResponseField name="guid" type="string">
+  Unique identifier for the reaction message
+</ResponseField>
+
+<ResponseField name="associatedMessageGuid" type="string | null">
+  The GUID of the message this reaction is associated with
+</ResponseField>
+
+<ResponseField name="associatedMessageType" type="string | null">
+  The type of association (typically the reaction type)
+</ResponseField>
+
+<ResponseField name="dateCreated" type="number">
+  Timestamp when the reaction was sent
+</ResponseField>
+
+## Examples
+
+### Send a Heart Reaction
+
+```typescript
+const reaction = await sdk.messages.sendReaction({
+  chatGuid: "iMessage;-;user@example.com",
+  messageGuid: "iMessage;-;user@example.com;12345",
+  reaction: "love"
+});
+
+console.log("Sent heart reaction!");
+```
+
+### Send a Thumbs Up
+
+```typescript
+await sdk.messages.sendReaction({
+  chatGuid: "iMessage;-;user@example.com",
+  messageGuid: "iMessage;-;user@example.com;12345",
+  reaction: "like"
+});
+```
+
+### Send "Haha" Reaction
+
+```typescript
+await sdk.messages.sendReaction({
+  chatGuid: "iMessage;-;user@example.com",
+  messageGuid: "iMessage;-;user@example.com;12345",
+  reaction: "laugh"
+});
+```
+
+### Remove a Reaction
+
+```typescript
+// First, send a reaction
+await sdk.messages.sendReaction({
+  chatGuid: "iMessage;-;user@example.com",
+  messageGuid: "iMessage;-;user@example.com;12345",
+  reaction: "love"
+});
+
+// Later, remove it by prefixing with "-"
+await sdk.messages.sendReaction({
+  chatGuid: "iMessage;-;user@example.com",
+  messageGuid: "iMessage;-;user@example.com;12345",
+  reaction: "-love"
+});
+
+console.log("Reaction removed");
+```
+
+### React to Incoming Messages
+
+```typescript
+sdk.on("message", async (message) => {
+  // Auto-react with thumbs up to messages from a specific person
+  if (message.handle?.address === "friend@example.com" && !message.isFromMe) {
+    await sdk.messages.sendReaction({
+      chatGuid: message.chats![0].guid,
+      messageGuid: message.guid,
+      reaction: "like"
+    });
+    console.log(`Liked message: ${message.text}`);
+  }
+});
+```
+
+### React Based on Message Content
+
+```typescript
+sdk.on("message", async (message) => {
+  if (!message.isFromMe && message.text) {
+    const text = message.text.toLowerCase();
+    
+    // Auto-react based on keywords
+    if (text.includes("funny") || text.includes("😂")) {
+      await sdk.messages.sendReaction({
+        chatGuid: message.chats![0].guid,
+        messageGuid: message.guid,
+        reaction: "laugh"
+      });
+    } else if (text.includes("love") || text.includes("❤️")) {
+      await sdk.messages.sendReaction({
+        chatGuid: message.chats![0].guid,
+        messageGuid: message.guid,
+        reaction: "love"
+      });
+    } else if (text.includes("?") || text.includes("confused")) {
+      await sdk.messages.sendReaction({
+        chatGuid: message.chats![0].guid,
+        messageGuid: message.guid,
+        reaction: "question"
+      });
+    }
+  }
+});
+```
+
+### Toggle Reaction
+
+```typescript
+async function toggleReaction(
+  chatGuid: string,
+  messageGuid: string,
+  reactionType: string
+) {
+  // Get the message to check if we already reacted
+  const message = await sdk.messages.getMessage(messageGuid);
+  
+  // Check if we already have this reaction (implementation depends on your needs)
+  const hasReaction = false; // You'd check message.associatedMessages or similar
+  
+  if (hasReaction) {
+    // Remove reaction
+    await sdk.messages.sendReaction({
+      chatGuid,
+      messageGuid,
+      reaction: `-${reactionType}`
+    });
+    console.log(`Removed ${reactionType} reaction`);
+  } else {
+    // Add reaction
+    await sdk.messages.sendReaction({
+      chatGuid,
+      messageGuid,
+      reaction: reactionType
+    });
+    console.log(`Added ${reactionType} reaction`);
+  }
+}
+
+await toggleReaction(
+  "iMessage;-;user@example.com",
+  "iMessage;-;user@example.com;12345",
+  "love"
+);
+```
+
+### React to Your Own Messages
+
+```typescript
+// Send a message
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "Did you see the game last night?"
+});
+
+// React to your own message
+await sdk.messages.sendReaction({
+  chatGuid: "iMessage;-;user@example.com",
+  messageGuid: message.guid,
+  reaction: "emphasize"
+});
+```
+
+## Reaction Types Reference
+
+| Reaction | Code | Visual | Remove Code |
+|----------|------|--------|-------------|
+| Heart | `"love"` | ❤️ | `"-love"` |
+| Thumbs Up | `"like"` | 👍 | `"-like"` |
+| Thumbs Down | `"dislike"` | 👎 | `"-dislike"` |
+| Haha | `"laugh"` | 😂 | `"-laugh"` |
+| Emphasize | `"emphasize"` | !! | `"-emphasize"` |
+| Question | `"question"` | ? | `"-question"` |
+
+## Error Handling
+
+```typescript
+try {
+  await sdk.messages.sendReaction({
+    chatGuid: "iMessage;-;user@example.com",
+    messageGuid: "iMessage;-;user@example.com;12345",
+    reaction: "love"
+  });
+  console.log("Reaction sent");
+} catch (error) {
+  if (error.response?.status === 400) {
+    console.error("Invalid reaction type or message GUID");
+  } else if (error.response?.status === 404) {
+    console.error("Message not found");
+  } else if (error.message.includes("not supported")) {
+    console.error("Reactions not supported for this chat type (likely SMS)");
+  } else {
+    console.error("Failed to send reaction:", error.message);
+  }
+}
+```
+
+## SMS Behavior
+
+When sending a tapback to an SMS chat, the recipient receives a text message:
+
+```
+Liked "This is the original message"
+```
+
+The format varies by reaction type:
+- `love`: "Loved \"message\""
+- `like`: "Liked \"message\""
+- `dislike`: "Disliked \"message\""
+- `laugh`: "Laughed at \"message\""
+- `emphasize`: "Emphasized \"message\""
+- `question`: "Questioned \"message\""
+
+## Limitations
+
+<Note>
+  **Tapback limitations:**
+  
+  - Only one reaction type per person per message (adding a new reaction replaces the old one)
+  - SMS recipients receive text descriptions instead of visual reactions
+  - No support for custom reactions or emojis (limited to the 6 built-in types)
+  - Some older iMessage versions may not display reactions correctly
+</Note>
+
+## Related Methods
+
+- [sendMessage](/api/messages/send-message) - Send a new message
+- [getMessage](/api/messages/get-messages#getmessage) - Get message details

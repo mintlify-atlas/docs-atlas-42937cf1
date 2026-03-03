@@ -1,0 +1,188 @@
+---
+title: 'Server Info'
+description: 'Get BlueBubbles server metadata and system information'
+icon: 'server'
+---
+
+## getServerInfo()
+
+Retrieves metadata and system information about the BlueBubbles server.
+
+```typescript
+const info = await sdk.server.getServerInfo();
+```
+
+### Returns
+
+<ResponseField name="info" type="ServerMetadataResponse">
+  Server metadata and system information
+</ResponseField>
+
+---
+
+## ServerMetadataResponse
+
+Contains detailed information about the server's configuration, status, and capabilities.
+
+### Fields
+
+<ResponseField name="os_version" type="string">
+  macOS version running on the server
+  
+  Example: `"14.2.1"`
+</ResponseField>
+
+<ResponseField name="server_version" type="string">
+  BlueBubbles server version
+  
+  Example: `"1.9.0"`
+</ResponseField>
+
+<ResponseField name="private_api" type="boolean">
+  Whether Private API is enabled (required for advanced features)
+  
+  Example: `true`
+</ResponseField>
+
+<ResponseField name="helper_connected" type="boolean">
+  Whether the Private API helper bundle is connected
+  
+  Example: `true`
+</ResponseField>
+
+<ResponseField name="detected_icloud" type="string">
+  iCloud account email address detected on the server
+  
+  Example: `"user@icloud.com"`
+</ResponseField>
+
+<ResponseField name="detected_icloud_name" type="string">
+  Display name associated with the iCloud account
+  
+  Example: `"John Doe"`
+</ResponseField>
+
+<ResponseField name="detected_imessage" type="string">
+  Primary iMessage phone number or email
+  
+  Example: `"+1234567890"`
+</ResponseField>
+
+<ResponseField name="macos_time_sync" type="number | null">
+  Time synchronization offset between server and macOS (in milliseconds)
+  
+  Example: `0`
+</ResponseField>
+
+<ResponseField name="local_ipv4s" type="string[]">
+  Array of local IPv4 addresses for the server
+  
+  Example: `["192.168.1.100", "10.0.0.5"]`
+</ResponseField>
+
+<ResponseField name="local_ipv6s" type="string[]">
+  Array of local IPv6 addresses for the server
+  
+  Example: `["fe80::1"]`
+</ResponseField>
+
+<ResponseField name="computer_id" type="string">
+  Unique identifier for the server computer
+  
+  Example: `"ABC12345-6789-DEF0-1234-56789ABCDEF0"`
+</ResponseField>
+
+---
+
+## Example
+
+Retrieve and display server information:
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: 'http://localhost:1234',
+  password: 'your-password'
+});
+
+await sdk.connect();
+
+// Get server info
+const info = await sdk.server.getServerInfo();
+
+console.log('Server Information');
+console.log('==================');
+console.log(`OS Version: ${info.os_version}`);
+console.log(`Server Version: ${info.server_version}`);
+console.log(`Private API: ${info.private_api ? 'enabled' : 'disabled'}`);
+console.log(`Helper Connected: ${info.helper_connected ? 'yes' : 'no'}`);
+
+if (info.detected_icloud) {
+  console.log(`\niCloud Account:`);
+  console.log(`  Email: ${info.detected_icloud}`);
+  if (info.detected_icloud_name) {
+    console.log(`  Name: ${info.detected_icloud_name}`);
+  }
+}
+
+if (info.detected_imessage) {
+  console.log(`\niMessage Handle: ${info.detected_imessage}`);
+}
+
+if (info.local_ipv4s && info.local_ipv4s.length > 0) {
+  console.log(`\nLocal IP Addresses:`);
+  info.local_ipv4s.forEach(ip => console.log(`  - ${ip}`));
+}
+
+// Check capabilities
+if (!info.private_api) {
+  console.warn('\n⚠️  Private API is not enabled. Some features may be unavailable.');
+}
+
+if (!info.helper_connected && info.private_api) {
+  console.warn('\n⚠️  Private API helper is not connected.');
+}
+```
+
+## Use Cases
+
+### Server Health Check
+
+Verify the server is properly configured:
+
+```typescript
+const info = await sdk.server.getServerInfo();
+
+const isHealthy = info.private_api && info.helper_connected;
+
+if (isHealthy) {
+  console.log('✅ Server is healthy and ready');
+} else {
+  console.log('❌ Server configuration issues detected');
+}
+```
+
+### Version Compatibility Check
+
+Ensure the server meets minimum version requirements:
+
+```typescript
+const info = await sdk.server.getServerInfo();
+const [major, minor, patch] = info.server_version.split('.').map(Number);
+
+const requiredVersion = { major: 1, minor: 9, patch: 0 };
+
+if (
+  major > requiredVersion.major ||
+  (major === requiredVersion.major && minor >= requiredVersion.minor)
+) {
+  console.log('✅ Server version is compatible');
+} else {
+  console.log('⚠️  Please update your BlueBubbles server');
+}
+```
+
+<Note>
+  This endpoint is useful for debugging connection issues and verifying server capabilities before attempting to use advanced features.
+</Note>

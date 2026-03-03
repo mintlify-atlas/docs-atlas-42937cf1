@@ -1,0 +1,380 @@
+---
+title: 'Receiving Messages'
+description: 'Learn how to listen for new messages and handle real-time events'
+---
+
+## Overview
+
+The Advanced iMessage Kit SDK uses WebSocket-based real-time events to notify you of incoming messages, status updates, and other chat activities.
+
+## Basic Setup
+
+<Steps>
+  <Step title="Initialize the SDK">
+    Create an SDK instance with your server URL and API key.
+
+    ```typescript
+    import { AdvancedIMessageKit } from "advanced-imessage-kit";
+
+    const sdk = new AdvancedIMessageKit({
+      serverUrl: "http://localhost:1234",
+      apiKey: "your-api-key"
+    });
+    ```
+  </Step>
+
+  <Step title="Listen for the ready event">
+    Wait for the SDK to connect and authenticate before setting up other listeners.
+
+    ```typescript
+    sdk.on("ready", () => {
+      console.log("SDK connected and ready!");
+    });
+    ```
+  </Step>
+
+  <Step title="Connect to the server">
+    Establish the WebSocket connection.
+
+    ```typescript
+    await sdk.connect();
+    ```
+  </Step>
+</Steps>
+
+## Simple Message Listener
+
+The most basic way to receive messages is using the `new-message` event.
+
+```typescript
+import { AdvancedIMessageKit } from "advanced-imessage-kit";
+import { isPollMessage, getPollSummary } from "advanced-imessage-kit/lib/poll-utils";
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+sdk.on("ready", () => {
+  console.log("Ready to receive messages");
+});
+
+sdk.on("new-message", (message) => {
+  const sender = message.handle?.address ?? "unknown";
+  
+  // Handle polls differently
+  if (isPollMessage(message)) {
+    const pollSummary = getPollSummary(message);
+    console.log(`${sender}: ${pollSummary}`);
+  } else {
+    console.log(`${sender}: ${message.text ?? "(no text)"}`);
+  }
+});
+
+sdk.on("error", (error) => {
+  console.error("Error:", error.message);
+});
+
+await sdk.connect();
+```
+
+<Note>
+The `new-message` event fires for ALL incoming messages, including those you send from other devices.
+</Note>
+
+## Advanced Message Handling
+
+Implement more sophisticated message handling with filtering and detailed logging.
+
+```typescript
+sdk.on("ready", async () => {
+  try {
+    // Get chat list on startup
+    const chatList = await sdk.chats.getChats();
+    console.log(`Monitoring ${chatList.length} chats`);
+    
+    chatList.slice(0, 10).forEach((chat, i) => {
+      console.log(`  ${i + 1}. ${chat.displayName || chat.chatIdentifier}`);
+    });
+
+    // Get server info
+    const serverInfo = await sdk.server.getServerInfo();
+    console.log(`Server version: ${serverInfo.version}`);
+  } catch (error) {
+    console.error("Setup failed:", error);
+  }
+});
+
+sdk.on("new-message", (message) => {
+  // Parse poll messages
+  if (isPollMessage(message)) {
+    if (isPollVote(message)) {
+      const voteData = parsePollVotes(message);
+      const votesWithText = voteData?.votes.map(v => ({
+        ...v,
+        optionText: getOptionTextById(v.voteOptionIdentifier) ?? null
+      }));
+      console.log(JSON.stringify({ ...message, parsedVotes: votesWithText }, null, 2));
+    } else {
+      const pollData = parsePollDefinition(message);
+      console.log(JSON.stringify({ ...message, parsedPoll: pollData }, null, 2));
+    }
+  } else {
+    console.log(JSON.stringify(message, null, 2));
+  }
+});
+```
+
+## Filtering Messages
+
+Filter messages by sender, content, or chat.
+
+<Tabs>
+  <Tab title="Filter by Sender">
+    ```typescript
+    sdk.on("new-message", (message) => {
+      // Only process messages from a specific number
+      if (message.handle?.address === "+1234567890") {
+        console.log(`Message from watched contact: ${message.text}`);
+      }
+    });
+    ```
+  </Tab>
+
+  <Tab title="Filter by Chat">
+    ```typescript
+    const TARGET_CHAT = "iMessage;-;+1234567890";
+
+    sdk.on("new-message", (message) => {
+      // Only process messages in a specific chat
+      if (message.chats?.some(chat => chat.guid === TARGET_CHAT)) {
+        console.log(`Message in target chat: ${message.text}`);
+      }
+    });
+    ```
+  </Tab>
+
+  <Tab title="Ignore Own Messages">
+    ```typescript
+    sdk.on("new-message", (message) => {
+      // Skip messages you sent
+      if (message.isFromMe) {
+        return;
+      }
+      
+      console.log(`Received: ${message.text}`);
+    });
+    ```
+  </Tab>
+
+  <Tab title="Filter by Content">
+    ```typescript
+    sdk.on("new-message", (message) => {
+      // Only process messages containing specific keywords
+      const text = message.text?.toLowerCase() || "";
+      
+      if (text.includes("urgent") || text.includes("important")) {
+        console.log(`Priority message: ${message.text}`);
+        // Handle urgent message
+      }
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Auto-Reply Bot
+
+Create a simple auto-reply bot that responds to incoming messages.
+
+```typescript
+sdk.on("ready", () => {
+  console.log("Auto-reply bot is running...");
+});
+
+sdk.on("new-message", async (message) => {
+  // Don't reply to our own messages
+  if (message.isFromMe) return;
+  
+  // Don't reply to empty messages
+  if (!message.text) return;
+  
+  const text = message.text.toLowerCase();
+  const sender = message.handle?.address;
+  
+  // Only reply to messages containing "hey"
+  if (text.includes("hey")) {
+    console.log(`Received "hey" from ${sender}`);
+    
+    // Get the chat GUID to reply to
+    const chatGuid = message.chats?.[0]?.guid;
+    if (!chatGuid) return;
+    
+    try {
+      const reply = await sdk.messages.sendMessage({
+        chatGuid,
+        message: "Hey! I'm an auto-reply bot."
+      });
+      
+      console.log(`Sent auto-reply: ${reply.guid}`);
+    } catch (error) {
+      console.error("Failed to send auto-reply:", error);
+    }
+  }
+});
+
+await sdk.connect();
+```
+
+<Warning>
+Be careful with auto-reply bots to avoid creating message loops. Always check `isFromMe` to prevent replying to your own messages.
+</Warning>
+
+## Message Status Updates
+
+Track message delivery and read status with the `updated-message` event.
+
+```typescript
+sdk.on("updated-message", (message) => {
+  const status = message.dateRead 
+    ? "read" 
+    : message.dateDelivered 
+    ? "delivered" 
+    : "sent";
+  
+  console.log(`Message ${message.guid}: ${status}`);
+  
+  if (message.dateRead) {
+    const readTime = new Date(message.dateRead);
+    console.log(`Read at: ${readTime.toLocaleString()}`);
+  }
+});
+```
+
+## Typing Indicators
+
+Receive notifications when someone is typing.
+
+```typescript
+sdk.on("typing-indicator", (data) => {
+  console.log(`${data.display} is typing...`);
+});
+```
+
+<Note>
+Typing indicators are ephemeral and don't indicate when typing stops.
+</Note>
+
+## Message History
+
+Fetch historical messages from a chat.
+
+```typescript
+sdk.on("ready", async () => {
+  const CHAT_GUID = "iMessage;-;+1234567890";
+  
+  try {
+    // Get last 50 messages
+    const messages = await sdk.messages.getMessages({
+      chatGuid: CHAT_GUID,
+      limit: 50,
+      sort: "DESC" // Most recent first
+    });
+    
+    console.log(`Found ${messages.length} messages`);
+    
+    messages.forEach(msg => {
+      const sender = msg.isFromMe ? "Me" : msg.handle?.address;
+      const time = new Date(msg.dateCreated).toLocaleString();
+      console.log(`[${time}] ${sender}: ${msg.text}`);
+    });
+  } catch (error) {
+    console.error("Failed to fetch messages:", error);
+  }
+});
+```
+
+## Filtering by Sender
+
+Receive messages only from specific contacts.
+
+```typescript
+const MONITORED_CONTACTS = ["+1234567890", "+0987654321"];
+
+sdk.on("new-message", async (message) => {
+  if (message.isFromMe) return;
+  
+  const sender = message.handle?.address;
+  
+  // Only process messages from monitored contacts
+  if (sender && MONITORED_CONTACTS.includes(sender)) {
+    console.log(`Message from ${sender}: ${message.text}`);
+    
+    // Fetch full message details if needed
+    try {
+      const fullMessage = await sdk.messages.getMessage(message.guid, {
+        with: ["chat", "handle", "attachment"]
+      });
+      
+      console.log("Full message data:", fullMessage);
+    } catch (error) {
+      console.error("Failed to fetch message details:", error);
+    }
+  }
+});
+```
+
+## Graceful Shutdown
+
+Properly close the connection when your application exits.
+
+```typescript
+process.on("SIGINT", async () => {
+  console.log("\nShutting down...");
+  await sdk.close();
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  console.log("\nShutting down...");
+  await sdk.close();
+  process.exit(0);
+});
+```
+
+## Connection Management
+
+Handle connection errors and disconnections.
+
+```typescript
+sdk.on("disconnect", () => {
+  console.log("Disconnected from server");
+});
+
+sdk.on("error", (error) => {
+  console.error("SDK error:", error.message);
+});
+
+// The SDK automatically reconnects, but you can monitor reconnection attempts
+sdk.socket.io.on("reconnect_attempt", (attempt) => {
+  console.log(`Reconnection attempt #${attempt}`);
+});
+
+sdk.socket.io.on("reconnect", (attempt) => {
+  console.log(`Reconnected after ${attempt} attempt(s)`);
+});
+```
+
+<Tip>
+The SDK includes automatic reconnection with exponential backoff. It will keep trying to reconnect indefinitely.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Real-Time Events" icon="bolt" href="/guides/real-time-events">
+    Comprehensive guide to all event types
+  </Card>
+  <Card title="Managing Chats" icon="comments" href="/guides/managing-chats">
+    Learn how to manage chats and groups
+  </Card>
+</CardGroup>

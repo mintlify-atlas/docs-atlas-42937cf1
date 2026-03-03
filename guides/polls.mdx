@@ -1,0 +1,590 @@
+---
+title: 'Polls'
+description: 'Learn how to create polls, vote, and parse poll data'
+---
+
+## Overview
+
+The Advanced iMessage Kit SDK provides full support for iMessage polls, allowing you to create polls, vote on options, add new options, and parse poll data from messages.
+
+## Creating Polls
+
+Create a poll with multiple choice options.
+
+<Steps>
+  <Step title="Prepare poll options">
+    Define your poll title and options (minimum 2 options).
+
+    ```typescript
+    const pollOptions = [
+      "Option A - First choice",
+      "Option B - Second choice",
+      "Option C - Third choice",
+      "Option D - Fourth choice"
+    ];
+    ```
+  </Step>
+
+  <Step title="Create the poll">
+    Use the `polls.create()` method.
+
+    ```typescript
+    const pollMessage = await sdk.polls.create({
+      chatGuid: "iMessage;-;+1234567890",
+      title: "What's your favorite?",
+      options: pollOptions
+    });
+
+    console.log(`Poll created: ${pollMessage.guid}`);
+    console.log(`Balloon ID: ${pollMessage.balloonBundleId}`);
+    ```
+  </Step>
+
+  <Step title="Access poll data">
+    Parse the poll definition from the message.
+
+    ```typescript
+    import { parsePollDefinition } from "advanced-imessage-kit/lib/poll-utils";
+
+    const pollData = parsePollDefinition(pollMessage);
+    
+    if (pollData) {
+      console.log(`Title: ${pollData.title}`);
+      console.log(`Creator: ${pollData.creatorHandle}`);
+      console.log(`Options: ${pollData.options.length}`);
+      
+      pollData.options.forEach((opt, i) => {
+        console.log(`  ${i + 1}. ${opt.text}`);
+        console.log(`     ID: ${opt.optionIdentifier}`);
+      });
+    }
+    ```
+  </Step>
+</Steps>
+
+## Complete Poll Creation Example
+
+```typescript
+import { AdvancedIMessageKit } from "advanced-imessage-kit";
+import { parsePollDefinition } from "advanced-imessage-kit/lib/poll-utils";
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+const CHAT_GUID = "iMessage;-;+1234567890";
+
+sdk.on("ready", async () => {
+  console.log("Creating a poll...\n");
+
+  try {
+    const pollMessage = await sdk.polls.create({
+      chatGuid: CHAT_GUID,
+      title: "Team Lunch Poll",
+      options: [
+        "Pizza",
+        "Sushi",
+        "Burgers",
+        "Salads"
+      ]
+    });
+
+    console.log("✓ Poll created successfully!");
+    console.log(`Poll message GUID: ${pollMessage.guid}`);
+    console.log(`Balloon Bundle ID: ${pollMessage.balloonBundleId}`);
+
+    // Parse the poll data
+    const pollData = parsePollDefinition(pollMessage);
+    
+    if (pollData) {
+      console.log(`\nPoll Details:`);
+      console.log(`  Title: ${pollData.title}`);
+      console.log(`  Creator: ${pollData.creatorHandle}`);
+      console.log(`  Options:`);
+      
+      pollData.options.forEach((opt, i) => {
+        console.log(`    ${i + 1}. ${opt.text} (${opt.optionIdentifier})`);
+      });
+    }
+  } catch (error) {
+    console.error("Failed to create poll:", error.message);
+  }
+
+  await sdk.close();
+  process.exit(0);
+});
+
+await sdk.connect();
+```
+
+## Voting on Polls
+
+Cast your vote on a poll option.
+
+<Steps>
+  <Step title="Get the poll message GUID">
+    You need the GUID of the poll message you want to vote on.
+
+    ```typescript
+    const pollMessageGuid = "poll-message-guid-here";
+    ```
+  </Step>
+
+  <Step title="Get the option identifier">
+    Parse the poll to get option identifiers.
+
+    ```typescript
+    import { parsePollDefinition } from "advanced-imessage-kit/lib/poll-utils";
+
+    const poll = await sdk.messages.getMessage(pollMessageGuid, {
+      with: ["payloadData"]
+    });
+    
+    const pollData = parsePollDefinition(poll);
+    const firstOptionId = pollData?.options?.[0]?.optionIdentifier;
+    ```
+  </Step>
+
+  <Step title="Cast your vote">
+    Use the `polls.vote()` method.
+
+    ```typescript
+    const voteMessage = await sdk.polls.vote({
+      chatGuid: "iMessage;-;+1234567890",
+      pollMessageGuid: pollMessageGuid,
+      optionIdentifier: firstOptionId
+    });
+
+    console.log(`Voted: ${voteMessage.guid}`);
+    ```
+  </Step>
+</Steps>
+
+## Complete Voting Example
+
+```typescript
+import { AdvancedIMessageKit } from "advanced-imessage-kit";
+import { parsePollDefinition } from "advanced-imessage-kit/lib/poll-utils";
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+const CHAT_GUID = "iMessage;-;+1234567890";
+const POLL_MESSAGE_GUID = process.env.POLL_MESSAGE_GUID;
+
+sdk.on("ready", async () => {
+  try {
+    let pollMessageGuid = POLL_MESSAGE_GUID;
+    let optionIdentifier;
+
+    // Create a poll if we don't have one
+    if (!pollMessageGuid) {
+      const poll = await sdk.polls.create({
+        chatGuid: CHAT_GUID,
+        title: "Vote test",
+        options: ["Option A", "Option B", "Option C"]
+      });
+
+      pollMessageGuid = poll.guid;
+      console.log(`Created poll: ${pollMessageGuid}`);
+
+      const pollData = parsePollDefinition(poll);
+      optionIdentifier = pollData?.options?.[0]?.optionIdentifier;
+      console.log(`Options: ${pollData?.options?.map(o => o.text).join(", ")}`);
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    // Get option identifier if we don't have it
+    if (!optionIdentifier) {
+      const poll = await sdk.messages.getMessage(pollMessageGuid, {
+        with: ["payloadData"]
+      });
+      const pollData = parsePollDefinition(poll);
+      optionIdentifier = pollData?.options?.[0]?.optionIdentifier;
+    }
+
+    if (!optionIdentifier) {
+      throw new Error("Could not find option identifier");
+    }
+
+    // Vote on the first option
+    const vote = await sdk.polls.vote({
+      chatGuid: CHAT_GUID,
+      pollMessageGuid: pollMessageGuid,
+      optionIdentifier
+    });
+
+    console.log(`Voted: ${vote.guid}`);
+  } catch (error) {
+    console.error("Failed to vote:", error.message);
+  }
+
+  await sdk.close();
+  process.exit(0);
+});
+
+await sdk.connect();
+```
+
+## Unvoting
+
+Remove your vote from a poll option.
+
+```typescript
+const unvoteMessage = await sdk.polls.unvote({
+  chatGuid: "iMessage;-;+1234567890",
+  pollMessageGuid: pollMessageGuid,
+  optionIdentifier: optionIdentifier
+});
+
+console.log(`Unvoted: ${unvoteMessage.guid}`);
+```
+
+## Adding Poll Options
+
+Add new options to an existing poll.
+
+```typescript
+const newOption = await sdk.polls.addOption({
+  chatGuid: "iMessage;-;+1234567890",
+  pollMessageGuid: pollMessageGuid,
+  optionText: "New Option E"
+});
+
+console.log(`Added option: ${newOption.guid}`);
+```
+
+<Note>
+All participants in the chat can add new options to a poll.
+</Note>
+
+## Parsing Poll Data
+
+Use the poll utility functions to extract structured data from poll messages.
+
+### Identifying Poll Messages
+
+```typescript
+import { isPollMessage, isPollVote } from "advanced-imessage-kit/lib/poll-utils";
+
+sdk.on("new-message", (message) => {
+  if (isPollMessage(message)) {
+    console.log("This is a poll message!");
+    
+    if (isPollVote(message)) {
+      console.log("Someone voted on a poll");
+    } else {
+      console.log("A new poll was created");
+    }
+  }
+});
+```
+
+### Parsing Poll Definitions
+
+```typescript
+import { parsePollDefinition } from "advanced-imessage-kit/lib/poll-utils";
+
+const pollData = parsePollDefinition(message);
+
+if (pollData) {
+  console.log(`Title: ${pollData.title}`);
+  console.log(`Creator: ${pollData.creatorHandle}`);
+  
+  pollData.options.forEach((option, i) => {
+    console.log(`Option ${i + 1}:`);
+    console.log(`  Text: ${option.text}`);
+    console.log(`  ID: ${option.optionIdentifier}`);
+  });
+}
+```
+
+### Parsing Vote Data
+
+```typescript
+import { parsePollVotes, getOptionTextById } from "advanced-imessage-kit/lib/poll-utils";
+
+const voteData = parsePollVotes(message);
+
+if (voteData) {
+  console.log(`Votes: ${voteData.votes.length}`);
+  
+  voteData.votes.forEach(vote => {
+    const optionText = getOptionTextById(vote.voteOptionIdentifier);
+    console.log(`${vote.participantHandle} voted for: ${optionText || vote.voteOptionIdentifier}`);
+  });
+}
+```
+
+## Poll Summaries
+
+Generate human-readable summaries of polls.
+
+```typescript
+import { getPollSummary, getPollOneLiner } from "advanced-imessage-kit/lib/poll-utils";
+
+// Detailed multi-line summary
+const summary = getPollSummary(message);
+console.log(summary);
+// Output:
+// [Poll] "What's for lunch?"
+//   1. Pizza
+//   2. Sushi
+//   3. Burgers
+
+// Concise one-line summary
+const oneLiner = getPollOneLiner(message);
+console.log(oneLiner);
+// Output: [What's for lunch?] Pizza, Sushi, +1 more
+```
+
+## Listening for Poll Events
+
+Monitor polls in real-time.
+
+```typescript
+import { 
+  isPollMessage, 
+  isPollVote, 
+  parsePollDefinition, 
+  parsePollVotes,
+  getOptionTextById 
+} from "advanced-imessage-kit/lib/poll-utils";
+
+sdk.on("new-message", (message) => {
+  if (!isPollMessage(message)) return;
+
+  if (isPollVote(message)) {
+    // Someone voted
+    const voteData = parsePollVotes(message);
+    
+    if (voteData) {
+      voteData.votes.forEach(vote => {
+        const optionText = getOptionTextById(vote.voteOptionIdentifier);
+        console.log(`📊 ${vote.participantHandle} voted: ${optionText}`);
+      });
+    }
+  } else {
+    // New poll created
+    const pollData = parsePollDefinition(message);
+    
+    if (pollData) {
+      console.log(`📋 New poll: ${pollData.title}`);
+      pollData.options.forEach((opt, i) => {
+        console.log(`  ${i + 1}. ${opt.text}`);
+      });
+    }
+  }
+});
+```
+
+## Complete Poll Monitoring Example
+
+```typescript
+import { AdvancedIMessageKit } from "advanced-imessage-kit";
+import {
+  isPollMessage,
+  isPollVote,
+  parsePollDefinition,
+  parsePollVotes,
+  getOptionTextById,
+  getPollSummary
+} from "advanced-imessage-kit/lib/poll-utils";
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+sdk.on("ready", () => {
+  console.log("Monitoring polls...\n");
+});
+
+sdk.on("new-message", (message) => {
+  const sender = message.handle?.address ?? "unknown";
+
+  if (isPollMessage(message)) {
+    const pollSummary = getPollSummary(message);
+    console.log(`\n${sender}: ${pollSummary}`);
+    
+    // Detailed parsing
+    if (isPollVote(message)) {
+      const voteData = parsePollVotes(message);
+      const votesWithText = voteData?.votes.map(v => ({
+        ...v,
+        optionText: getOptionTextById(v.voteOptionIdentifier) ?? null
+      }));
+      console.log("Vote details:", JSON.stringify(votesWithText, null, 2));
+    } else {
+      const pollData = parsePollDefinition(message);
+      console.log("Poll data:", JSON.stringify(pollData, null, 2));
+    }
+  } else {
+    console.log(`\n${sender}: ${message.text ?? "(no text)"}`);
+  }
+});
+
+sdk.on("error", (error) => {
+  console.error("Error:", error.message);
+});
+
+await sdk.connect();
+
+// Keep running
+process.on("SIGINT", async () => {
+  console.log("\nShutting down...");
+  await sdk.close();
+  process.exit(0);
+});
+```
+
+## Poll Caching
+
+The SDK automatically caches poll definitions to resolve option IDs in vote messages.
+
+```typescript
+import { cachePoll, getCachedPoll } from "advanced-imessage-kit/lib/poll-utils";
+
+// Poll definitions are automatically cached when parsed
+const pollData = parsePollDefinition(message);
+// This internally calls: cachePoll(message.guid, pollData)
+
+// Retrieve cached poll later
+const cached = getCachedPoll(pollMessageGuid);
+
+if (cached) {
+  console.log(`Cached poll: ${cached.title}`);
+  console.log(`Options: ${cached.options.length}`);
+}
+```
+
+## Poll Ballot Bundle ID
+
+Poll messages have a specific balloon bundle identifier.
+
+```typescript
+import { POLL_BALLOON_BUNDLE_ID } from "advanced-imessage-kit/lib/poll-utils";
+
+console.log(POLL_BALLOON_BUNDLE_ID);
+// "com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:com.apple.messages.Polls"
+
+// Check if message is a poll by bundle ID
+if (message.balloonBundleId === POLL_BALLOON_BUNDLE_ID) {
+  console.log("This is a poll!");
+}
+```
+
+## Associated Message Types
+
+Poll votes have a specific associated message type.
+
+```typescript
+// Poll vote messages have associatedMessageType: "4000"
+if (message.associatedMessageType === "4000") {
+  console.log("This is a poll vote");
+}
+
+// Use the helper function instead
+import { isPollVote } from "advanced-imessage-kit/lib/poll-utils";
+
+if (isPollVote(message)) {
+  console.log("This is a poll vote");
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const poll = await sdk.polls.create({
+    chatGuid: CHAT_GUID,
+    title: "Test Poll",
+    options: ["A", "B"]
+  });
+  
+  console.log("Poll created successfully");
+} catch (error) {
+  if (error.message?.includes("at least 2 options")) {
+    console.error("Polls must have at least 2 options");
+  } else if (error.response?.status === 404) {
+    console.error("Chat not found");
+  } else {
+    console.error("Failed to create poll:", error.message);
+  }
+}
+```
+
+## Best Practices
+
+<Tip>
+**Cache Poll Definitions:** When you receive a poll creation message, parse and cache it immediately. This allows you to resolve option IDs when vote messages arrive.
+</Tip>
+
+<Tip>
+**Minimum Options:** Polls must have at least 2 options. The SDK will throw an error if you try to create a poll with fewer.
+</Tip>
+
+<Warning>
+**Empty Titles:** Poll titles can be empty strings (""). This is valid and creates an untitled poll.
+</Warning>
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Team Decisions" icon="users">
+    Let teams vote on meeting times, lunch spots, or project priorities.
+  </Card>
+
+  <Card title="Event Planning" icon="calendar">
+    Gather preferences for event dates, locations, or activities.
+  </Card>
+
+  <Card title="Quick Surveys" icon="chart-bar">
+    Run informal surveys within group chats.
+  </Card>
+
+  <Card title="Preference Collection" icon="list-check">
+    Collect preferences from chat participants efficiently.
+  </Card>
+</CardGroup>
+
+## Utility Functions Reference
+
+```typescript
+import {
+  // Identification
+  isPollMessage,           // Check if message is a poll
+  isPollVote,             // Check if message is a poll vote
+  
+  // Parsing
+  parsePollDefinition,    // Parse poll creation data
+  parsePollVotes,         // Parse vote data
+  
+  // Caching
+  cachePoll,              // Manually cache a poll
+  getCachedPoll,          // Retrieve cached poll
+  getOptionTextById,      // Get option text by ID
+  
+  // Summaries
+  getPollSummary,         // Get multi-line summary
+  getPollOneLiner,        // Get one-line summary
+  
+  // Constants
+  POLL_BALLOON_BUNDLE_ID  // Poll message bundle ID
+} from "advanced-imessage-kit/lib/poll-utils";
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Real-Time Events" icon="bolt" href="/guides/real-time-events">
+    Learn more about message events
+  </Card>
+  <Card title="Sending Messages" icon="paper-plane" href="/guides/sending-messages">
+    Explore other message types
+  </Card>
+</CardGroup>

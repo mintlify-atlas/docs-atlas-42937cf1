@@ -1,0 +1,238 @@
+---
+title: 'Typing Events'
+description: 'Events related to typing indicators in conversations'
+icon: 'keyboard'
+---
+
+## Overview
+
+Typing events are emitted when someone in a conversation starts or stops typing a message.
+
+## Events
+
+### typing-indicator
+
+Emitted when a typing indicator appears or disappears in a conversation.
+
+<ResponseField name="data" type="object">
+  Typing indicator information
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string" required>
+      The unique identifier of the chat where typing is occurring
+    </ResponseField>
+    
+    <ResponseField name="display" type="boolean" required>
+      Whether the typing indicator should be displayed (`true`) or hidden (`false`)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Basic Usage
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('typing-indicator', (data) => {
+  const status = data.display ? 'started' : 'stopped';
+  console.log(`Someone ${status} typing in chat: ${data.guid}`);
+});
+
+await client.connect();
+```
+
+```typescript Show Typing Status
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+const typingChats = new Set<string>();
+
+client.on('typing-indicator', (data) => {
+  if (data.display) {
+    typingChats.add(data.guid);
+    console.log(`💬 Someone is typing in ${data.guid}`);
+  } else {
+    typingChats.delete(data.guid);
+    console.log(`🔕 Typing stopped in ${data.guid}`);
+  }
+  
+  console.log(`Total chats with typing: ${typingChats.size}`);
+});
+
+await client.connect();
+```
+
+```typescript Get Chat Details
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('typing-indicator', async (data) => {
+  if (!data.display) return; // Only show when typing starts
+  
+  try {
+    const chat = await client.chats.getChat(data.guid);
+    const chatName = chat.displayName || 'Unknown Chat';
+    
+    console.log(`💬 Someone is typing in "${chatName}"`);
+  } catch (error) {
+    console.error('Failed to fetch chat details:', error);
+  }
+});
+
+await client.connect();
+```
+
+```typescript UI Integration
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+const typingTimeouts = new Map<string, NodeJS.Timeout>();
+
+client.on('typing-indicator', (data) => {
+  // Clear existing timeout for this chat
+  const existingTimeout = typingTimeouts.get(data.guid);
+  if (existingTimeout) {
+    clearTimeout(existingTimeout);
+  }
+  
+  if (data.display) {
+    // Show typing indicator in UI
+    console.log(`[UI] Show typing indicator for ${data.guid}`);
+    // updateUI({ chatGuid: data.guid, typing: true });
+    
+    // Set timeout to hide if no stop signal received
+    const timeout = setTimeout(() => {
+      console.log(`[UI] Hide typing indicator for ${data.guid} (timeout)`);
+      // updateUI({ chatGuid: data.guid, typing: false });
+      typingTimeouts.delete(data.guid);
+    }, 10000); // Hide after 10 seconds
+    
+    typingTimeouts.set(data.guid, timeout);
+  } else {
+    // Hide typing indicator in UI
+    console.log(`[UI] Hide typing indicator for ${data.guid}`);
+    // updateUI({ chatGuid: data.guid, typing: false });
+    typingTimeouts.delete(data.guid);
+  }
+});
+
+await client.connect();
+```
+
+```typescript Track Typing Duration
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+const typingStartTimes = new Map<string, number>();
+
+client.on('typing-indicator', (data) => {
+  if (data.display) {
+    // Record when typing started
+    typingStartTimes.set(data.guid, Date.now());
+    console.log(`Typing started in ${data.guid}`);
+  } else {
+    // Calculate typing duration
+    const startTime = typingStartTimes.get(data.guid);
+    if (startTime) {
+      const duration = Date.now() - startTime;
+      console.log(`Typing stopped in ${data.guid} after ${duration}ms`);
+      typingStartTimes.delete(data.guid);
+    }
+  }
+});
+
+await client.connect();
+```
+
+```typescript Combine with Messages
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+const typingChats = new Set<string>();
+
+client.on('typing-indicator', (data) => {
+  if (data.display) {
+    typingChats.add(data.guid);
+  } else {
+    typingChats.delete(data.guid);
+  }
+});
+
+client.on('new-message', (message) => {
+  const chatGuid = message.chats?.[0]?.guid;
+  if (!chatGuid) return;
+  
+  if (typingChats.has(chatGuid)) {
+    console.log('Message received from someone who was typing');
+    typingChats.delete(chatGuid);
+  } else {
+    console.log('Message received without typing indicator');
+  }
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+## Event Methods
+
+### on()
+
+Register a listener that will be called every time the event is emitted.
+
+```typescript
+client.on('typing-indicator', (data) => {
+  console.log(data);
+});
+```
+
+### once()
+
+Register a listener that will be called only once, then automatically removed.
+
+```typescript
+client.once('typing-indicator', (data) => {
+  console.log('First typing indicator:', data);
+});
+```
+
+### off()
+
+Remove a specific listener from an event.
+
+```typescript
+const handler = (data) => {
+  console.log(data);
+};
+
+client.on('typing-indicator', handler);
+
+// Later, remove the listener
+client.off('typing-indicator', handler);
+```
+
+<Note>
+You must pass the exact same function reference to `off()` that was passed to `on()`. Anonymous functions cannot be removed.
+</Note>
+
+## Important Notes
+
+<Warning>
+Typing indicators are not always reliable and may not fire in all situations:
+- Group chats may not always show typing indicators
+- SMS/MMS conversations (green bubbles) don't support typing indicators
+- Network conditions can delay or prevent typing events
+- Some users may have typing indicators disabled in their settings
+</Warning>
+
+<Tip>
+For better UX, implement a timeout to automatically hide typing indicators after 10-15 seconds, even if you don't receive a `display: false` event.
+</Tip>
+
+## Related
+
+- [Chat Events](/api/events/chat-events) - Handle chat status changes
+- [Message Events](/api/events/message-events) - Handle incoming messages
+- [Chats API](/api/chats/get-chats) - Manage chats and conversations

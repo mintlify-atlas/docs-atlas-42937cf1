@@ -1,0 +1,269 @@
+---
+title: 'Sending Messages'
+description: 'Learn how to send text messages, replies, rich links, and messages with effects'
+---
+
+## Overview
+
+The Advanced iMessage Kit SDK provides comprehensive message sending capabilities including basic text messages, replies, rich links, and visual effects.
+
+## Basic Text Messages
+
+<Steps>
+  <Step title="Send a simple message">
+    Use the `messages.sendMessage()` method with a chat GUID and message text.
+
+    ```typescript
+    const message = await sdk.messages.sendMessage({
+      chatGuid: "iMessage;-;+1234567890",
+      message: "Hello from MOBAI!"
+    });
+
+    console.log(`Sent: ${message.guid}`);
+    console.log(`Created: ${new Date(message.dateCreated).toLocaleString()}`);
+    ```
+  </Step>
+
+  <Step title="Handle the response">
+    The method returns a `MessageResponse` object containing:
+    - `guid` - Unique message identifier
+    - `text` - Message content
+    - `dateCreated` - Timestamp in milliseconds
+    - `isFromMe` - Boolean indicating if you sent it
+  </Step>
+</Steps>
+
+## Replying to Messages
+
+Reply to specific messages using the `selectedMessageGuid` parameter to create threaded conversations.
+
+```typescript
+// Send initial message
+const firstMessage = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "What's your favorite color?"
+});
+
+await new Promise(resolve => setTimeout(resolve, 1000));
+
+// Send a second message
+const secondMessage = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "Also, what's your favorite food?"
+});
+
+await new Promise(resolve => setTimeout(resolve, 2000));
+
+// Reply to the FIRST message specifically
+const reply = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "My favorite color is blue!",
+  selectedMessageGuid: firstMessage.guid
+});
+
+console.log(`Replied to: ${firstMessage.guid}`);
+```
+
+<Note>
+Replies create a visual thread in iMessage that links the new message to the original.
+</Note>
+
+## Rich Links
+
+Send URLs with rich previews that display website metadata, images, and titles.
+
+```typescript
+const richLinkMessage = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "https://photon.codes/",
+  richLink: true
+});
+
+console.log(`Sent rich link: ${richLinkMessage.guid}`);
+console.log(`Balloon ID: ${richLinkMessage.balloonBundleId}`);
+```
+
+<Tip>
+Set `richLink: true` to enable rich previews. Without this flag, URLs appear as plain text.
+</Tip>
+
+## Message Effects
+
+Add visual effects to your messages for celebrations, emphasis, or fun interactions.
+
+<Warning>
+Message effects require **Private API** to be enabled on your server. Standard API does not support effects.
+</Warning>
+
+### Available Effects
+
+<Tabs>
+  <Tab title="Screen Effects">
+    Full-screen animations that play when the message is received.
+
+    ```typescript
+    const MESSAGE_EFFECTS = {
+      confetti: "com.apple.messages.effect.CKConfettiEffect",
+      lasers: "com.apple.messages.effect.CKHappyBirthdayEffect",
+      fireworks: "com.apple.messages.effect.CKFireworksEffect",
+      balloons: "com.apple.messages.effect.CKBalloonEffect",
+      hearts: "com.apple.messages.effect.CKHeartEffect",
+      shootingStar: "com.apple.messages.effect.CKShootingStarEffect",
+      celebration: "com.apple.messages.effect.CKSparklesEffect",
+      echo: "com.apple.messages.effect.CKEchoEffect",
+      spotlight: "com.apple.messages.effect.CKSpotlightEffect"
+    };
+
+    // Send with confetti effect
+    const confettiMsg = await sdk.messages.sendMessage({
+      chatGuid: "iMessage;-;+1234567890",
+      message: "Happy Birthday!",
+      effectId: MESSAGE_EFFECTS.confetti
+    });
+    ```
+  </Tab>
+
+  <Tab title="Bubble Effects">
+    Effects that modify how the message bubble appears.
+
+    ```typescript
+    const BUBBLE_EFFECTS = {
+      gentle: "com.apple.MobileSMS.expressivesend.gentle",
+      loud: "com.apple.MobileSMS.expressivesend.loud",
+      slam: "com.apple.MobileSMS.expressivesend.impact",
+      invisible_ink: "com.apple.MobileSMS.expressivesend.invisibleink"
+    };
+
+    // Send with slam effect
+    const slamMsg = await sdk.messages.sendMessage({
+      chatGuid: "iMessage;-;+1234567890",
+      message: "BAM!",
+      effectId: BUBBLE_EFFECTS.slam
+    });
+
+    // Send with invisible ink (requires tap to reveal)
+    const secretMsg = await sdk.messages.sendMessage({
+      chatGuid: "iMessage;-;+1234567890",
+      message: "Secret message!",
+      effectId: BUBBLE_EFFECTS.invisible_ink
+    });
+    ```
+  </Tab>
+</Tabs>
+
+### Effects Example
+
+```typescript
+// Combine multiple effects in sequence
+const effects = [
+  { msg: "Congratulations!", effect: MESSAGE_EFFECTS.balloons },
+  { msg: "I love you!", effect: MESSAGE_EFFECTS.hearts },
+  { msg: "IMPORTANT MESSAGE!", effect: BUBBLE_EFFECTS.loud }
+];
+
+for (const { msg, effect } of effects) {
+  await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: msg,
+    effectId: effect
+  });
+  
+  // Wait between messages
+  await new Promise(resolve => setTimeout(resolve, 3000));
+}
+```
+
+## Message Subjects
+
+Add subjects to messages (similar to email subject lines).
+
+```typescript
+const messageWithSubject = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+1234567890",
+  message: "The meeting has been moved to 3 PM tomorrow.",
+  subject: "Meeting Time Change"
+});
+```
+
+## Auto-Creating Chats
+
+The SDK automatically creates chats if they don't exist when you send a message.
+
+```typescript
+// This works even if you've never messaged this number before
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;+19876543210",
+  message: "First message to a new contact!"
+});
+```
+
+<Note>
+If the chat doesn't exist, the SDK will:
+1. Extract the address from the `chatGuid`
+2. Create a new chat with that address
+3. Send your message
+4. Return the message response
+</Note>
+
+## Error Handling
+
+Handle errors gracefully when sending messages.
+
+```typescript
+try {
+  const message = await sdk.messages.sendMessage({
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Hello!"
+  });
+  
+  console.log("Message sent successfully");
+} catch (error) {
+  if (error.response?.status === 404) {
+    console.error("Chat not found");
+  } else if (error.response?.status === 500) {
+    console.error("Server error");
+  } else {
+    console.error("Failed to send:", error.message);
+  }
+}
+```
+
+## Sequential Message Delivery
+
+The SDK automatically ensures messages are sent in order using an internal queue.
+
+```typescript
+// These messages will be sent sequentially, preserving order
+const msg1 = sdk.messages.sendMessage({ 
+  chatGuid: CHAT_GUID, 
+  message: "First" 
+});
+
+const msg2 = sdk.messages.sendMessage({ 
+  chatGuid: CHAT_GUID, 
+  message: "Second" 
+});
+
+const msg3 = sdk.messages.sendMessage({ 
+  chatGuid: CHAT_GUID, 
+  message: "Third" 
+});
+
+// Wait for all to complete
+await Promise.all([msg1, msg2, msg3]);
+```
+
+<Tip>
+Messages are queued automatically. You don't need to manually wait between sends - the SDK handles ordering for you.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Receiving Messages" icon="inbox" href="/guides/receiving-messages">
+    Learn how to listen for incoming messages
+  </Card>
+  <Card title="Working with Attachments" icon="paperclip" href="/guides/working-with-attachments">
+    Send and receive images, videos, and files
+  </Card>
+</CardGroup>

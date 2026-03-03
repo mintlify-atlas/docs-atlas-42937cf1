@@ -1,0 +1,308 @@
+---
+title: "Parse Poll Messages"
+description: "Utility functions to identify and parse poll messages and votes"
+---
+
+## Overview
+
+These utility functions help you work with poll messages by identifying poll types and extracting structured data from the raw payload.
+
+## Check if Message is a Poll
+
+```typescript
+isPollMessage(message: MessageResponse): boolean
+```
+
+Determines if a message is a poll message (either poll definition or vote).
+
+### Parameters
+
+<ParamField path="message" type="MessageResponse" required>
+  The message to check
+</ParamField>
+
+### Returns
+
+<ResponseField name="boolean" type="boolean">
+  `true` if the message is a poll (either definition or vote), `false` otherwise
+</ResponseField>
+
+### Example
+
+```typescript
+import { isPollMessage } from "advanced-imessage-kit";
+
+sdk.on("message", (message) => {
+  if (isPollMessage(message)) {
+    console.log("Received a poll message!");
+  }
+});
+```
+
+---
+
+## Check if Message is a Poll Vote
+
+```typescript
+isPollVote(message: MessageResponse): boolean
+```
+
+Determines if a message is a poll vote (as opposed to the original poll definition).
+
+### Parameters
+
+<ParamField path="message" type="MessageResponse" required>
+  The message to check
+</ParamField>
+
+### Returns
+
+<ResponseField name="boolean" type="boolean">
+  `true` if the message is a poll vote, `false` otherwise
+</ResponseField>
+
+### Example
+
+```typescript
+import { isPollMessage, isPollVote } from "advanced-imessage-kit";
+
+sdk.on("message", (message) => {
+  if (isPollMessage(message)) {
+    if (isPollVote(message)) {
+      console.log("Someone voted on a poll");
+    } else {
+      console.log("A new poll was created");
+    }
+  }
+});
+```
+
+---
+
+## Parse Poll Definition
+
+```typescript
+parsePollDefinition(message: MessageResponse): ParsedPoll | null
+```
+
+Extracts the poll definition from a poll message, including title, creator, and all options with their identifiers.
+
+### Parameters
+
+<ParamField path="message" type="MessageResponse" required>
+  The poll message to parse (must be a poll definition, not a vote)
+</ParamField>
+
+### Returns
+
+<ResponseField name="ParsedPoll | null" type="object | null">
+  Parsed poll data, or `null` if the message is not a poll definition
+  
+  <Expandable title="properties">
+    <ResponseField name="title" type="string">
+      The poll question or title
+    </ResponseField>
+    
+    <ResponseField name="creatorHandle" type="string">
+      The handle (phone number or email) of the poll creator
+    </ResponseField>
+    
+    <ResponseField name="options" type="PollOption[]">
+      Array of poll options
+      
+      <Expandable title="option properties">
+        <ResponseField name="optionIdentifier" type="string">
+          Unique identifier for this option (needed for voting)
+        </ResponseField>
+        
+        <ResponseField name="text" type="string">
+          The option text displayed to users
+        </ResponseField>
+        
+        <ResponseField name="attributedText" type="string">
+          Attributed text representation
+        </ResponseField>
+        
+        <ResponseField name="creatorHandle" type="string">
+          Handle of who created this option
+        </ResponseField>
+        
+        <ResponseField name="canBeEdited" type="boolean">
+          Whether this option can be edited
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+import { parsePollDefinition, isPollVote } from "advanced-imessage-kit";
+
+sdk.on("message", (message) => {
+  if (isPollMessage(message) && !isPollVote(message)) {
+    const pollData = parsePollDefinition(message);
+    
+    if (pollData) {
+      console.log(`Poll: ${pollData.title}`);
+      console.log(`By: ${pollData.creatorHandle}`);
+      console.log("Options:");
+      
+      pollData.options.forEach((option, index) => {
+        console.log(`  ${index + 1}. ${option.text}`);
+        console.log(`     ID: ${option.optionIdentifier}`);
+      });
+    }
+  }
+});
+```
+
+---
+
+## Parse Poll Votes
+
+```typescript
+parsePollVotes(message: MessageResponse): ParsedPollVote | null
+```
+
+Extracts vote information from a poll vote message.
+
+### Parameters
+
+<ParamField path="message" type="MessageResponse" required>
+  The vote message to parse (must be a poll vote)
+</ParamField>
+
+### Returns
+
+<ResponseField name="ParsedPollVote | null" type="object | null">
+  Parsed vote data, or `null` if the message is not a poll vote
+  
+  <Expandable title="properties">
+    <ResponseField name="votes" type="PollVote[]">
+      Array of votes in this message
+      
+      <Expandable title="vote properties">
+        <ResponseField name="voteOptionIdentifier" type="string">
+          The option identifier that was voted for
+        </ResponseField>
+        
+        <ResponseField name="participantHandle" type="string">
+          The handle of the person who voted
+        </ResponseField>
+        
+        <ResponseField name="serverVoteTime" type="number" optional>
+          Server timestamp of when the vote was cast (if available)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+import { parsePollVotes, isPollVote, getOptionTextById } from "advanced-imessage-kit";
+
+sdk.on("message", (message) => {
+  if (isPollMessage(message) && isPollVote(message)) {
+    const voteData = parsePollVotes(message);
+    
+    if (voteData) {
+      voteData.votes.forEach((vote) => {
+        const optionText = getOptionTextById(vote.voteOptionIdentifier);
+        const display = optionText ? `"${optionText}"` : vote.voteOptionIdentifier;
+        
+        console.log(`${vote.participantHandle} voted for ${display}`);
+      });
+    }
+  }
+});
+```
+
+---
+
+## Complete Example: Poll Monitoring
+
+```typescript
+import {
+  iMessageSDK,
+  isPollMessage,
+  isPollVote,
+  parsePollDefinition,
+  parsePollVotes,
+} from "advanced-imessage-kit";
+
+const sdk = new iMessageSDK({ serverUrl: "http://localhost:3000" });
+
+sdk.on("ready", () => {
+  console.log("Monitoring polls...");
+});
+
+sdk.on("message", (message) => {
+  // Check if this is a poll-related message
+  if (!isPollMessage(message)) {
+    return;
+  }
+  
+  if (isPollVote(message)) {
+    // Handle vote messages
+    const voteData = parsePollVotes(message);
+    
+    if (voteData && voteData.votes.length > 0) {
+      console.log("\n[POLL VOTE]");
+      
+      voteData.votes.forEach((vote) => {
+        console.log(`  ${vote.participantHandle} voted`);
+        console.log(`  Option: ${vote.voteOptionIdentifier}`);
+        
+        if (vote.serverVoteTime) {
+          console.log(`  Time: ${new Date(vote.serverVoteTime).toLocaleString()}`);
+        }
+      });
+    }
+  } else {
+    // Handle poll definition messages
+    const pollData = parsePollDefinition(message);
+    
+    if (pollData) {
+      console.log("\n[NEW POLL]");
+      console.log(`Title: ${pollData.title || "(no title)"}`);
+      console.log(`Creator: ${pollData.creatorHandle}`);
+      console.log(`Options (${pollData.options.length}):`);
+      
+      pollData.options.forEach((option, index) => {
+        console.log(`  ${index + 1}. ${option.text}`);
+        console.log(`     ID: ${option.optionIdentifier}`);
+        console.log(`     Can edit: ${option.canBeEdited}`);
+      });
+    }
+  }
+});
+
+await sdk.connect();
+```
+
+## Helper Constants
+
+```typescript
+import { POLL_BALLOON_BUNDLE_ID } from "advanced-imessage-kit";
+
+console.log(POLL_BALLOON_BUNDLE_ID);
+// "com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:com.apple.messages.Polls"
+```
+
+The balloon bundle ID used to identify poll messages.
+
+---
+
+## Notes
+
+- `isPollMessage()` returns `true` for both poll definitions and votes
+- `isPollVote()` only returns `true` for vote messages (checks if `associatedMessageType === "4000"`)
+- `parsePollDefinition()` returns `null` for vote messages - only use it on poll definitions
+- `parsePollVotes()` returns `null` for poll definitions - only use it on vote messages
+- Poll data is automatically cached when parsed, making subsequent lookups faster
+- Option identifiers are required for voting and are unique to each poll option
+- All parsing functions safely handle invalid or malformed poll messages by returning `null`

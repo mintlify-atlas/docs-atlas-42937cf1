@@ -1,0 +1,190 @@
+---
+title: "Create Scheduled Message"
+description: "Schedule a message to be sent at a specific time, either once or on a recurring schedule"
+---
+
+## Method
+
+```typescript
+await sdk.scheduledMessages.createScheduledMessage(options: CreateScheduledMessageOptions): Promise<ScheduledMessageData>
+```
+
+Schedules a message to be sent at a specific time. Supports both one-time and recurring schedules with flexible interval types.
+
+## Parameters
+
+<ParamField path="options" type="CreateScheduledMessageOptions" required>
+  Configuration for the scheduled message
+  
+  <Expandable title="properties">
+    <ParamField path="type" type="string" required>
+      Type of scheduled action. Use `"send-message"` for sending messages
+    </ParamField>
+    
+    <ParamField path="payload" type="object" required>
+      The message payload to send
+      
+      <Expandable title="properties">
+        <ParamField path="chatGuid" type="string" required>
+          The chat GUID to send the message to
+        </ParamField>
+        
+        <ParamField path="message" type="string" required>
+          The message text to send
+        </ParamField>
+        
+        <ParamField path="method" type="string" required>
+          Send method. Use `"apple-script"` for standard sending
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="scheduledFor" type="number" required>
+      Timestamp (in milliseconds) when the message should first be sent
+    </ParamField>
+    
+    <ParamField path="schedule" type="ScheduleConfig" required>
+      Schedule configuration
+      
+      <Expandable title="One-Time Schedule">
+        <ParamField path="type" type="'once'" required>
+          Set to `"once"` for a one-time scheduled message
+        </ParamField>
+      </Expandable>
+      
+      <Expandable title="Recurring Schedule">
+        <ParamField path="type" type="'recurring'" required>
+          Set to `"recurring"` for repeating messages
+        </ParamField>
+        
+        <ParamField path="intervalType" type="string" required>
+          Interval type. Options: `"hourly"`, `"daily"`, `"weekly"`, `"monthly"`, `"yearly"`
+        </ParamField>
+        
+        <ParamField path="interval" type="number" required>
+          How many intervals between each occurrence (e.g., `1` for every day, `2` for every 2 weeks)
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="ScheduledMessageData" type="object">
+  The created scheduled message
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="number">
+      Unique identifier for the scheduled message
+    </ResponseField>
+    
+    <ResponseField name="chatGuid" type="string">
+      The chat GUID this message is scheduled for
+    </ResponseField>
+    
+    <ResponseField name="message" type="string">
+      The message text that will be sent
+    </ResponseField>
+    
+    <ResponseField name="scheduledFor" type="number">
+      Timestamp when the message will be sent
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="number">
+      Timestamp when the scheduled message was created
+    </ResponseField>
+    
+    <ResponseField name="type" type="string">
+      The action type (e.g., "send-message")
+    </ResponseField>
+    
+    <ResponseField name="payload" type="object">
+      The full payload configuration
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### One-Time Scheduled Message
+
+```typescript
+// Schedule a message for 3 seconds from now
+const scheduledFor = Date.now() + 3 * 1000;
+
+const scheduled = await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "This is a scheduled message!",
+    method: "apple-script",
+  },
+  scheduledFor,
+  schedule: { type: "once" },
+});
+
+console.log(`Scheduled message ID: ${scheduled.id}`);
+console.log(`Will send at: ${new Date(scheduledFor).toLocaleString()}`);
+```
+
+### Recurring Daily Message
+
+```typescript
+// Schedule a daily good morning message starting tomorrow at 9 AM
+const tomorrow9am = new Date();
+tomorrow9am.setDate(tomorrow9am.getDate() + 1);
+tomorrow9am.setHours(9, 0, 0, 0);
+
+const daily = await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Good morning!",
+    method: "apple-script",
+  },
+  scheduledFor: tomorrow9am.getTime(),
+  schedule: {
+    type: "recurring",
+    intervalType: "daily",
+    interval: 1,
+  },
+});
+
+console.log(`Scheduled recurring message ID: ${daily.id}`);
+console.log(`First occurrence: ${tomorrow9am.toLocaleString()}`);
+console.log(`Repeats: every day`);
+```
+
+### Weekly Reminder
+
+```typescript
+// Schedule a weekly reminder every Monday at 8 AM
+const nextMonday = new Date();
+const daysUntilMonday = (1 - nextMonday.getDay() + 7) % 7 || 7;
+nextMonday.setDate(nextMonday.getDate() + daysUntilMonday);
+nextMonday.setHours(8, 0, 0, 0);
+
+const weekly = await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Weekly team sync in 1 hour!",
+    method: "apple-script",
+  },
+  scheduledFor: nextMonday.getTime(),
+  schedule: {
+    type: "recurring",
+    intervalType: "weekly",
+    interval: 1,
+  },
+});
+```
+
+## Notes
+
+- All timestamps are in milliseconds (use `Date.now()` or `new Date().getTime()`)
+- For recurring messages, `scheduledFor` sets the first occurrence time
+- The interval types determine the frequency: hourly, daily, weekly, monthly, or yearly
+- Use `interval` to skip periods (e.g., `interval: 2` with `intervalType: "weekly"` sends every 2 weeks)
+- Scheduled messages persist until deleted or the schedule completes

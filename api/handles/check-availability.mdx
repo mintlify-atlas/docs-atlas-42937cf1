@@ -1,0 +1,225 @@
+---
+title: 'Check availability'
+description: 'Check iMessage and FaceTime availability and focus status for handles'
+keywords: ['availability', 'iMessage', 'FaceTime', 'focus', 'status', 'reachability']
+---
+
+## getHandleAvailability()
+
+Checks whether a specific address is available for iMessage or FaceTime communication.
+
+### Parameters
+
+<ParamField path="address" type="string" required>
+  The phone number or email address to check availability for.
+</ParamField>
+
+<ParamField path="type" type="string" required>
+  The service type to check. Must be either `"imessage"` or `"facetime"`.
+</ParamField>
+
+### Returns
+
+<ResponseField name="available" type="boolean" required>
+  `true` if the address is available for the specified service, `false` otherwise.
+</ResponseField>
+
+### Example
+
+```typescript
+// Check iMessage availability
+const isAvailableForIMessage = await client.handle.getHandleAvailability(
+  '+1234567890',
+  'imessage'
+);
+
+if (isAvailableForIMessage) {
+  console.log('This number can receive iMessages');
+} else {
+  console.log('This number can only receive SMS');
+}
+```
+
+### Check FaceTime availability
+
+```typescript
+const canFaceTime = await client.handle.getHandleAvailability(
+  'user@example.com',
+  'facetime'
+);
+
+if (canFaceTime) {
+  console.log('This contact is available for FaceTime calls');
+}
+```
+
+### Validate before messaging
+
+```typescript
+async function sendMessageIfAvailable(address: string, message: string) {
+  const available = await client.handle.getHandleAvailability(address, 'imessage');
+  
+  if (!available) {
+    console.log('Contact not available on iMessage, using SMS');
+  }
+  
+  await client.messages.send({
+    chatGuid: `iMessage;-;${address}`,
+    text: message
+  });
+}
+
+await sendMessageIfAvailable('+1234567890', 'Hello!');
+```
+
+<Info>This method queries Apple's servers to check real-time availability status.</Info>
+
+### Use cases
+
+- Verify iMessage availability before sending messages
+- Check FaceTime compatibility before initiating calls
+- Determine whether to use iMessage or SMS fallback
+- Build contact lists filtered by service availability
+
+### Batch availability check
+
+```typescript
+const contacts = [
+  '+1234567890',
+  'user1@example.com',
+  '+0987654321'
+];
+
+const availabilityResults = await Promise.all(
+  contacts.map(async (address) => ({
+    address,
+    imessage: await client.handle.getHandleAvailability(address, 'imessage'),
+    facetime: await client.handle.getHandleAvailability(address, 'facetime')
+  }))
+);
+
+availabilityResults.forEach(({ address, imessage, facetime }) => {
+  console.log(`${address}:`);
+  console.log(`  iMessage: ${imessage ? '✓' : '✗'}`);
+  console.log(`  FaceTime: ${facetime ? '✓' : '✗'}`);
+});
+```
+
+<Warning>Checking availability makes external API calls to Apple's servers. Avoid excessive checks to prevent rate limiting.</Warning>
+
+---
+
+## getHandleFocusStatus()
+
+Retrieves the current Focus status for a specific handle.
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  The unique GUID identifier of the handle to check focus status for.
+</ParamField>
+
+### Returns
+
+<ResponseField name="status" type="string" required>
+  The current Focus status. Common values include:
+  - `"available"` - User is available
+  - `"do-not-disturb"` - Do Not Disturb is enabled
+  - `"driving"` - Driving focus is active
+  - `"sleeping"` - Sleep focus is active
+  - `"working"` - Work focus is active
+  - `"personal"` - Personal focus is active
+</ResponseField>
+
+### Example
+
+```typescript
+const handleGuid = 'handle-guid-123';
+const focusStatus = await client.handle.getHandleFocusStatus(handleGuid);
+
+console.log(`Current focus status: ${focusStatus}`);
+
+if (focusStatus === 'do-not-disturb') {
+  console.log('User has Do Not Disturb enabled');
+}
+```
+
+### Respect focus modes
+
+```typescript
+async function sendRespectfulMessage(
+  handleGuid: string,
+  chatGuid: string,
+  message: string
+) {
+  const focusStatus = await client.handle.getHandleFocusStatus(handleGuid);
+  
+  if (focusStatus === 'do-not-disturb' || focusStatus === 'sleeping') {
+    console.log(`User is in ${focusStatus} mode. Scheduling for later...`);
+    // Schedule message instead of sending immediately
+    return;
+  }
+  
+  await client.messages.send({
+    chatGuid,
+    text: message
+  });
+}
+```
+
+### Check before sending important messages
+
+```typescript
+const handle = await client.handle.getHandle('handle-guid-123');
+const focusStatus = await client.handle.getHandleFocusStatus(handle.id);
+
+switch (focusStatus) {
+  case 'available':
+    console.log('User is available - send message now');
+    break;
+  case 'do-not-disturb':
+    console.log('User has DND enabled - consider waiting');
+    break;
+  case 'driving':
+    console.log('User is driving - message will be delayed');
+    break;
+  default:
+    console.log(`User focus status: ${focusStatus}`);
+}
+```
+
+<Tip>Checking Focus status helps you respect user preferences and send messages at appropriate times.</Tip>
+
+### Use cases
+
+- Respect Do Not Disturb settings before sending messages
+- Adjust message urgency based on focus mode
+- Schedule messages for when user becomes available
+- Build smart notification systems that honor user preferences
+
+### Focus-aware messaging bot
+
+```typescript
+client.on('message:received', async (message) => {
+  // Get sender's handle
+  const handle = await client.handle.queryHandles({
+    address: message.senderAddress
+  });
+  
+  if (handle.data.length === 0) return;
+  
+  const focusStatus = await client.handle.getHandleFocusStatus(
+    handle.data[0].id
+  );
+  
+  // Only send automated replies if user is available
+  if (focusStatus === 'available') {
+    await client.messages.send({
+      chatGuid: message.chatGuid,
+      text: 'Thanks for your message! I\'ll get back to you soon.'
+    });
+  }
+});
+```
+
+<Info>Focus status reflects the user's iOS/macOS Focus mode settings and is updated in real-time.</Info>

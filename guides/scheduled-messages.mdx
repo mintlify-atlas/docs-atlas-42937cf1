@@ -1,0 +1,525 @@
+---
+title: 'Scheduled Messages'
+description: 'Learn how to create one-time and recurring scheduled messages'
+---
+
+## Overview
+
+The Advanced iMessage Kit SDK supports scheduling messages to be sent at specific times, either once or on a recurring schedule. This is useful for reminders, automated notifications, and regular communications.
+
+## One-Time Scheduled Messages
+
+Schedule a message to be sent once at a specific time.
+
+<Steps>
+  <Step title="Calculate the scheduled time">
+    Determine when you want the message to be sent.
+
+    ```typescript
+    // Schedule for 3 seconds from now
+    const scheduledFor = Date.now() + 3 * 1000;
+
+    // Or schedule for a specific date/time
+    const tomorrow9am = new Date();
+    tomorrow9am.setDate(tomorrow9am.getDate() + 1);
+    tomorrow9am.setHours(9, 0, 0, 0);
+    const scheduledFor = tomorrow9am.getTime();
+    ```
+  </Step>
+
+  <Step title="Create the scheduled message">
+    Use the `scheduledMessages.createScheduledMessage()` method.
+
+    ```typescript
+    const scheduled = await sdk.scheduledMessages.createScheduledMessage({
+      type: "send-message",
+      payload: {
+        chatGuid: "iMessage;-;+1234567890",
+        message: "This is a scheduled message!",
+        method: "apple-script"
+      },
+      scheduledFor: scheduledFor,
+      schedule: { type: "once" }
+    });
+
+    console.log(`Scheduled: ${scheduled.id}`);
+    console.log(`Will send at: ${new Date(scheduledFor).toLocaleString()}`);
+    ```
+  </Step>
+
+  <Step title="Monitor the event">
+    Listen for the scheduled message to be sent.
+
+    ```typescript
+    sdk.on("scheduled-message-sent", (data) => {
+      console.log(`Scheduled message sent: ${data.id}`);
+      console.log(`Message: ${data.payload?.message}`);
+    });
+    ```
+  </Step>
+</Steps>
+
+## Complete One-Time Example
+
+```typescript
+import { AdvancedIMessageKit } from "advanced-imessage-kit";
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+const CHAT_GUID = "iMessage;-;+1234567890";
+
+sdk.on("ready", async () => {
+  try {
+    // Schedule message for 3 seconds from now
+    const scheduledFor = Date.now() + 3 * 1000;
+
+    const scheduled = await sdk.scheduledMessages.createScheduledMessage({
+      type: "send-message",
+      payload: {
+        chatGuid: CHAT_GUID,
+        message: "This is a scheduled message!",
+        method: "apple-script"
+      },
+      scheduledFor,
+      schedule: { type: "once" }
+    });
+
+    console.log(`Scheduled: ${scheduled.id}`);
+    console.log(`For: ${new Date(scheduledFor).toLocaleString()}`);
+  } catch (error) {
+    console.error("Failed to schedule message:", error.message);
+  }
+
+  await sdk.close();
+  process.exit(0);
+});
+
+await sdk.connect();
+```
+
+## Recurring Scheduled Messages
+
+Schedule messages to be sent repeatedly at regular intervals.
+
+### Daily Messages
+
+```typescript
+// Send "Good morning!" every day at 9 AM
+const tomorrow9am = new Date();
+tomorrow9am.setDate(tomorrow9am.getDate() + 1);
+tomorrow9am.setHours(9, 0, 0, 0);
+
+const daily = await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Good morning!",
+    method: "apple-script"
+  },
+  scheduledFor: tomorrow9am.getTime(),
+  schedule: {
+    type: "recurring",
+    intervalType: "daily",
+    interval: 1 // Every 1 day
+  }
+});
+
+console.log(`Scheduled: ${daily.id}`);
+console.log(`First send: ${tomorrow9am.toLocaleString()}`);
+console.log(`Repeats: every day`);
+```
+
+### Hourly Messages
+
+```typescript
+// Send a reminder every 2 hours
+const twoHoursFromNow = Date.now() + 2 * 60 * 60 * 1000;
+
+const hourly = await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Hourly reminder",
+    method: "apple-script"
+  },
+  scheduledFor: twoHoursFromNow,
+  schedule: {
+    type: "recurring",
+    intervalType: "hourly",
+    interval: 2 // Every 2 hours
+  }
+});
+```
+
+### Weekly Messages
+
+```typescript
+// Send a weekly status update every Monday at 10 AM
+const nextMonday = new Date();
+const daysUntilMonday = (8 - nextMonday.getDay()) % 7 || 7;
+nextMonday.setDate(nextMonday.getDate() + daysUntilMonday);
+nextMonday.setHours(10, 0, 0, 0);
+
+const weekly = await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Weekly team update",
+    method: "apple-script"
+  },
+  scheduledFor: nextMonday.getTime(),
+  schedule: {
+    type: "recurring",
+    intervalType: "weekly",
+    interval: 1
+  }
+});
+```
+
+### Monthly Messages
+
+```typescript
+// Send a monthly reminder on the 1st of each month
+const firstOfNextMonth = new Date();
+firstOfNextMonth.setMonth(firstOfNextMonth.getMonth() + 1);
+firstOfNextMonth.setDate(1);
+firstOfNextMonth.setHours(9, 0, 0, 0);
+
+const monthly = await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Monthly reminder",
+    method: "apple-script"
+  },
+  scheduledFor: firstOfNextMonth.getTime(),
+  schedule: {
+    type: "recurring",
+    intervalType: "monthly",
+    interval: 1
+  }
+});
+```
+
+### Yearly Messages
+
+```typescript
+// Send a birthday message every year
+const nextBirthday = new Date();
+nextBirthday.setMonth(5); // June (0-indexed)
+nextBirthday.setDate(15);
+nextBirthday.setHours(9, 0, 0, 0);
+
+// If birthday already passed this year, schedule for next year
+if (nextBirthday < new Date()) {
+  nextBirthday.setFullYear(nextBirthday.getFullYear() + 1);
+}
+
+const yearly = await sdk.scheduledMessages.createScheduledMessage({
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Happy Birthday! 🎉",
+    method: "apple-script"
+  },
+  scheduledFor: nextBirthday.getTime(),
+  schedule: {
+    type: "recurring",
+    intervalType: "yearly",
+    interval: 1
+  }
+});
+```
+
+## Schedule Types
+
+<Tabs>
+  <Tab title="once">
+    Send the message one time only.
+
+    ```typescript
+    schedule: { type: "once" }
+    ```
+  </Tab>
+
+  <Tab title="recurring">
+    Send the message repeatedly.
+
+    ```typescript
+    schedule: {
+      type: "recurring",
+      intervalType: "hourly" | "daily" | "weekly" | "monthly" | "yearly",
+      interval: number // e.g., 1 for every interval, 2 for every other
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Managing Scheduled Messages
+
+List, update, and delete scheduled messages.
+
+### List All Scheduled Messages
+
+```typescript
+const messages = await sdk.scheduledMessages.getScheduledMessages();
+
+console.log(`Found ${messages.length} scheduled message(s)`);
+
+for (const msg of messages) {
+  console.log(`  [${msg.id}] ${msg.status} - ${msg.payload?.message}`);
+  console.log(`    Scheduled for: ${new Date(msg.scheduledFor).toLocaleString()}`);
+  
+  if (msg.schedule?.type === "recurring") {
+    console.log(`    Repeats: ${msg.schedule.intervalType} (every ${msg.schedule.interval})`);
+  }
+}
+```
+
+### Update a Scheduled Message
+
+```typescript
+const SCHEDULED_ID = "scheduled-message-id";
+
+const updated = await sdk.scheduledMessages.updateScheduledMessage(SCHEDULED_ID, {
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Updated message!",
+    method: "apple-script"
+  },
+  scheduledFor: Date.now() + 10 * 60 * 1000, // 10 minutes from now
+  schedule: { type: "once" }
+});
+
+console.log(`Updated: ${updated.id}`);
+```
+
+### Delete a Scheduled Message
+
+```typescript
+const SCHEDULED_ID = "scheduled-message-id";
+
+await sdk.scheduledMessages.deleteScheduledMessage(SCHEDULED_ID);
+console.log(`Deleted: ${SCHEDULED_ID}`);
+```
+
+## Complete Management Example
+
+```typescript
+import { AdvancedIMessageKit } from "advanced-imessage-kit";
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+const CHAT_GUID = "iMessage;-;+1234567890";
+const SCHEDULED_ID = process.env.SCHEDULED_ID;
+
+sdk.on("ready", async () => {
+  try {
+    // List all scheduled messages
+    const messages = await sdk.scheduledMessages.getScheduledMessages();
+    console.log(`Found ${messages.length} scheduled message(s)`);
+
+    for (const msg of messages) {
+      console.log(`  [${msg.id}] ${msg.status} - ${msg.payload?.message}`);
+    }
+
+    // Update a scheduled message
+    if (SCHEDULED_ID) {
+      const updated = await sdk.scheduledMessages.updateScheduledMessage(SCHEDULED_ID, {
+        type: "send-message",
+        payload: {
+          chatGuid: CHAT_GUID,
+          message: "Updated message!",
+          method: "apple-script"
+        },
+        scheduledFor: Date.now() + 10 * 60 * 1000,
+        schedule: { type: "once" }
+      });
+      console.log(`Updated: ${updated.id}`);
+
+      // Or delete it
+      // await sdk.scheduledMessages.deleteScheduledMessage(SCHEDULED_ID);
+      // console.log(`Deleted: ${SCHEDULED_ID}`);
+    }
+  } catch (error) {
+    console.error("Failed to manage scheduled messages:", error.message);
+  }
+
+  await sdk.close();
+  process.exit(0);
+});
+
+await sdk.connect();
+```
+
+## Event Monitoring
+
+Listen for scheduled message lifecycle events.
+
+```typescript
+sdk.on("scheduled-message-created", (data) => {
+  console.log(`📅 Created: ${data.id}`);
+  console.log(`   Will send at: ${new Date(data.scheduledFor).toLocaleString()}`);
+});
+
+sdk.on("scheduled-message-sent", (data) => {
+  console.log(`✓ Sent: ${data.id}`);
+  console.log(`  Message: ${data.payload?.message}`);
+});
+
+sdk.on("scheduled-message-error", (data) => {
+  console.error(`✗ Error: ${data.id}`);
+  console.error(`  Reason: ${data.error}`);
+});
+
+sdk.on("scheduled-message-updated", (data) => {
+  console.log(`✏️  Updated: ${data.id}`);
+});
+
+sdk.on("scheduled-message-deleted", (data) => {
+  console.log(`🗑️  Deleted: ${data.id}`);
+});
+```
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Daily Reminders" icon="bell">
+    Send daily standup reminders to your team.
+    
+    ```typescript
+    // Every weekday at 9 AM
+    schedule: {
+      type: "recurring",
+      intervalType: "daily",
+      interval: 1
+    }
+    ```
+  </Card>
+
+  <Card title="Birthday Messages" icon="cake">
+    Automatically send birthday wishes.
+    
+    ```typescript
+    // Once per year
+    schedule: {
+      type: "recurring",
+      intervalType: "yearly",
+      interval: 1
+    }
+    ```
+  </Card>
+
+  <Card title="Meeting Reminders" icon="calendar">
+    Send reminders before meetings.
+    
+    ```typescript
+    // 15 minutes before meeting
+    scheduledFor: meetingTime - 15 * 60 * 1000,
+    schedule: { type: "once" }
+    ```
+  </Card>
+
+  <Card title="Weekly Updates" icon="newspaper">
+    Send weekly team updates.
+    
+    ```typescript
+    // Every Monday at 10 AM
+    schedule: {
+      type: "recurring",
+      intervalType: "weekly",
+      interval: 1
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Scheduling Methods
+
+You can use different message sending methods.
+
+<Tabs>
+  <Tab title="AppleScript">
+    ```typescript
+    payload: {
+      chatGuid: CHAT_GUID,
+      message: "Hello!",
+      method: "apple-script" // Default, most compatible
+    }
+    ```
+  </Tab>
+
+  <Tab title="Private API">
+    ```typescript
+    payload: {
+      chatGuid: CHAT_GUID,
+      message: "Hello with effects!",
+      method: "private-api",
+      effectId: "com.apple.messages.effect.CKConfettiEffect"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+Private API method is required for message effects and some advanced features.
+</Note>
+
+## Error Handling
+
+```typescript
+try {
+  const scheduled = await sdk.scheduledMessages.createScheduledMessage({
+    type: "send-message",
+    payload: {
+      chatGuid: CHAT_GUID,
+      message: "Test",
+      method: "apple-script"
+    },
+    scheduledFor: Date.now() + 5000,
+    schedule: { type: "once" }
+  });
+  
+  console.log("Message scheduled successfully");
+} catch (error) {
+  if (error.response?.status === 400) {
+    console.error("Invalid schedule parameters");
+  } else if (error.response?.status === 404) {
+    console.error("Chat not found");
+  } else {
+    console.error("Failed to schedule message:", error.message);
+  }
+}
+```
+
+## Best Practices
+
+<Tip>
+**Timezone Considerations:** All timestamps are in milliseconds since epoch. Ensure your times account for the server's timezone.
+</Tip>
+
+<Tip>
+**Validation:** Always validate that `scheduledFor` is in the future before creating a scheduled message.
+</Tip>
+
+<Warning>
+**Rate Limiting:** Be mindful of creating too many scheduled messages. Each one runs on the server and consumes resources.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Real-Time Events" icon="bolt" href="/guides/real-time-events">
+    Learn about scheduled message events
+  </Card>
+  <Card title="Best Practices" icon="check" href="/guides/best-practices">
+    Optimize your scheduled message usage
+  </Card>
+</CardGroup>

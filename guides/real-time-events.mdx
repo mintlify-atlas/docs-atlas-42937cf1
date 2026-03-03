@@ -1,0 +1,618 @@
+---
+title: 'Real-Time Events'
+description: 'Comprehensive guide to all event types with examples'
+---
+
+## Overview
+
+The Advanced iMessage Kit SDK uses WebSocket-based real-time events to notify you of messages, status changes, group activities, and more. All events are strongly typed and include relevant data payloads.
+
+## Connection Events
+
+These events track the SDK's connection state to the server.
+
+### ready
+
+Emitted when the SDK successfully connects and authenticates.
+
+```typescript
+sdk.on("ready", () => {
+  console.log("SDK is ready to use!");
+  // Safe to start sending messages and making API calls
+});
+```
+
+<Note>
+Always wait for the `ready` event before sending messages or making API calls.
+</Note>
+
+### connect
+
+Emitted when the WebSocket connection is established (before authentication).
+
+```typescript
+sdk.on("connect", () => {
+  console.log("WebSocket connected");
+});
+```
+
+### disconnect
+
+Emitted when the connection is lost.
+
+```typescript
+sdk.on("disconnect", () => {
+  console.log("Disconnected from server");
+  // SDK will automatically attempt to reconnect
+});
+```
+
+### error
+
+Emitted when an error occurs.
+
+```typescript
+sdk.on("error", (error) => {
+  console.error("SDK Error:", error.message);
+});
+```
+
+## Message Events
+
+Events related to messages being sent, received, and updated.
+
+### new-message
+
+Emitted when a new message is received (or sent from another device).
+
+```typescript
+sdk.on("new-message", (message) => {
+  const sender = message.isFromMe ? "Me" : message.handle?.address;
+  const text = message.text || "(no text)";
+  const time = new Date(message.dateCreated).toLocaleString();
+  
+  console.log(`[${time}] ${sender}: ${text}`);
+  
+  // Check for attachments
+  if (message.attachments?.length) {
+    console.log(`  Attachments: ${message.attachments.length}`);
+  }
+  
+  // Check message type
+  if (message.associatedMessageType) {
+    console.log(`  Type: ${message.associatedMessageType}`);
+  }
+});
+```
+
+**Message Response Properties:**
+
+<CodeGroup>
+```typescript Message Response
+interface MessageResponse {
+  guid: string;                    // Unique message identifier
+  text?: string;                   // Message text content
+  handle?: {
+    address: string;               // Sender's phone/email
+    country?: string;
+    service: string;               // "iMessage" or "SMS"
+  };
+  isFromMe: boolean;              // True if you sent it
+  dateCreated: number;            // Timestamp (ms)
+  dateRead?: number;              // When read (ms)
+  dateDelivered?: number;         // When delivered (ms)
+  dateEdited?: number;            // When edited (ms)
+  attachments?: AttachmentResponse[];
+  associatedMessageGuid?: string; // For replies/reactions
+  associatedMessageType?: string; // Message type code
+  balloonBundleId?: string;       // App message identifier
+  payloadData?: any[];            // Rich content data
+  chats?: ChatResponse[];         // Associated chats
+  error?: number;                 // Error code if failed
+  subject?: string;               // Message subject
+  threadOriginatorGuid?: string;  // Thread starter GUID
+  // ... and more
+}
+```
+</CodeGroup>
+
+### updated-message
+
+Emitted when a message is updated (delivered, read, edited, etc.).
+
+```typescript
+sdk.on("updated-message", (message) => {
+  const status = message.dateRead 
+    ? "read" 
+    : message.dateDelivered 
+    ? "delivered" 
+    : "sent";
+  
+  console.log(`Message ${message.guid}: ${status}`);
+  
+  if (message.dateEdited) {
+    console.log(`  Edited: ${message.text}`);
+  }
+});
+```
+
+### message-send-error
+
+Emitted when a message fails to send.
+
+```typescript
+sdk.on("message-send-error", (message) => {
+  console.error(`Failed to send message: ${message.guid}`);
+  console.error(`Error code: ${message.error}`);
+  console.error(`Text: ${message.text}`);
+});
+```
+
+## Chat Events
+
+Events for chat and group management activities.
+
+### chat-read-status-changed
+
+Emitted when a chat's read/unread status changes.
+
+```typescript
+sdk.on("chat-read-status-changed", (data) => {
+  console.log(`Chat ${data.chatGuid}: ${data.read ? "read" : "unread"}`);
+});
+```
+
+### group-name-change
+
+Emitted when a group chat's name is changed.
+
+```typescript
+sdk.on("group-name-change", (data) => {
+  console.log(`Group renamed to: ${data.groupTitle}`);
+  console.log(`Chat: ${data.displayName || data.guid}`);
+});
+```
+
+### participant-added
+
+Emitted when someone is added to a group chat.
+
+```typescript
+sdk.on("participant-added", (data) => {
+  console.log(`Someone joined: ${data.displayName || data.guid}`);
+  // data is a MessageResponse with group change info
+});
+```
+
+### participant-removed
+
+Emitted when someone is removed from a group chat.
+
+```typescript
+sdk.on("participant-removed", (data) => {
+  console.log(`Someone was removed: ${data.displayName || data.guid}`);
+});
+```
+
+### participant-left
+
+Emitted when someone leaves a group chat.
+
+```typescript
+sdk.on("participant-left", (data) => {
+  console.log(`Someone left: ${data.displayName || data.guid}`);
+});
+```
+
+### group-icon-changed
+
+Emitted when a group's icon is changed.
+
+```typescript
+sdk.on("group-icon-changed", (data) => {
+  console.log(`Group icon changed: ${data.displayName || data.guid}`);
+});
+```
+
+### group-icon-removed
+
+Emitted when a group's icon is removed.
+
+```typescript
+sdk.on("group-icon-removed", (data) => {
+  console.log(`Group icon removed: ${data.displayName || data.guid}`);
+});
+```
+
+## Typing Events
+
+### typing-indicator
+
+Emitted when someone starts typing.
+
+```typescript
+sdk.on("typing-indicator", (data) => {
+  if (data.display) {
+    console.log(`Someone is typing in ${data.guid}`);
+  }
+});
+```
+
+**Data Structure:**
+```typescript
+{
+  display: boolean;  // true when typing
+  guid: string;      // Chat GUID
+}
+```
+
+<Note>
+Typing indicators don't emit when typing stops - they're ephemeral notifications.
+</Note>
+
+## Scheduled Message Events
+
+Events for scheduled message lifecycle.
+
+### scheduled-message-created
+
+Emitted when a new scheduled message is created.
+
+```typescript
+sdk.on("scheduled-message-created", (data) => {
+  console.log(`Scheduled message created: ${data.id}`);
+  console.log(`Will send at: ${new Date(data.scheduledFor).toLocaleString()}`);
+});
+```
+
+### scheduled-message-sent
+
+Emitted when a scheduled message is successfully sent.
+
+```typescript
+sdk.on("scheduled-message-sent", (data) => {
+  console.log(`Scheduled message sent: ${data.id}`);
+  console.log(`Message: ${data.payload?.message}`);
+});
+```
+
+### scheduled-message-error
+
+Emitted when a scheduled message fails to send.
+
+```typescript
+sdk.on("scheduled-message-error", (data) => {
+  console.error(`Scheduled message failed: ${data.id}`);
+  console.error(`Error: ${data.error}`);
+});
+```
+
+### scheduled-message-updated
+
+Emitted when a scheduled message is modified.
+
+```typescript
+sdk.on("scheduled-message-updated", (data) => {
+  console.log(`Scheduled message updated: ${data.id}`);
+});
+```
+
+### scheduled-message-deleted
+
+Emitted when a scheduled message is deleted.
+
+```typescript
+sdk.on("scheduled-message-deleted", (data) => {
+  console.log(`Scheduled message deleted: ${data.id}`);
+});
+```
+
+## FaceTime Events
+
+### incoming-facetime
+
+Emitted when you receive an incoming FaceTime call.
+
+```typescript
+sdk.on("incoming-facetime", (data) => {
+  // data is a JSON string
+  const callInfo = JSON.parse(data);
+  console.log(`Incoming FaceTime from: ${callInfo.caller}`);
+  console.log(`Time: ${new Date(callInfo.timestamp).toLocaleString()}`);
+});
+```
+
+### ft-call-status-changed
+
+Emitted when a FaceTime call's status changes.
+
+```typescript
+sdk.on("ft-call-status-changed", (data) => {
+  console.log(`FaceTime call status: ${data.status}`);
+  console.log(`Call ID: ${data.callId}`);
+});
+```
+
+## FindMy Events
+
+### new-findmy-location
+
+Emitted when a new FindMy location is received.
+
+```typescript
+sdk.on("new-findmy-location", (location) => {
+  console.log(`New location from: ${location.name}`);
+  console.log(`Lat: ${location.latitude}, Lon: ${location.longitude}`);
+  console.log(`Accuracy: ${location.accuracy}m`);
+});
+```
+
+## Server Events
+
+### new-server
+
+Emitted when server information is available.
+
+```typescript
+sdk.on("new-server", (serverData) => {
+  console.log(`Server data: ${serverData}`);
+});
+```
+
+### server-update
+
+Emitted when a server update is available.
+
+```typescript
+sdk.on("server-update", (data) => {
+  console.log(`Server update available: ${data.version}`);
+});
+```
+
+### server-update-downloading
+
+Emitted when a server update is being downloaded.
+
+```typescript
+sdk.on("server-update-downloading", (data) => {
+  console.log(`Downloading update: ${data.version}`);
+  console.log(`Progress: ${data.progress}%`);
+});
+```
+
+### server-update-installing
+
+Emitted when a server update is being installed.
+
+```typescript
+sdk.on("server-update-installing", (data) => {
+  console.log(`Installing update: ${data.version}`);
+});
+```
+
+## Backup Events
+
+### settings-backup-created
+
+Emitted when settings backup is created.
+
+```typescript
+sdk.on("settings-backup-created", (data) => {
+  console.log(`Settings backup created: ${data.id}`);
+});
+```
+
+### theme-backup-created
+
+Emitted when theme backup is created.
+
+```typescript
+sdk.on("theme-backup-created", (data) => {
+  console.log(`Theme backup created: ${data.id}`);
+});
+```
+
+## Configuration Events
+
+### config-update
+
+Emitted when server configuration is updated.
+
+```typescript
+sdk.on("config-update", (config) => {
+  console.log("Config updated:", config);
+});
+```
+
+### imessage-aliases-removed
+
+Emitted when iMessage aliases are removed.
+
+```typescript
+sdk.on("imessage-aliases-removed", (aliases) => {
+  console.log(`Removed aliases: ${aliases.join(", ")}`);
+});
+```
+
+## Complete Event Listener Example
+
+```typescript
+import { AdvancedIMessageKit } from "advanced-imessage-kit";
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+// Connection events
+sdk.on("ready", () => {
+  console.log("✓ SDK ready");
+});
+
+sdk.on("disconnect", () => {
+  console.log("✗ Disconnected");
+});
+
+sdk.on("error", (error) => {
+  console.error("Error:", error.message);
+});
+
+// Message events
+sdk.on("new-message", (message) => {
+  const sender = message.isFromMe ? "Me" : message.handle?.address;
+  console.log(`📨 ${sender}: ${message.text}`);
+});
+
+sdk.on("updated-message", (message) => {
+  if (message.dateRead) {
+    console.log(`✓✓ Message read`);
+  } else if (message.dateDelivered) {
+    console.log(`✓ Message delivered`);
+  }
+});
+
+sdk.on("message-send-error", (message) => {
+  console.error(`✗ Failed to send: ${message.text}`);
+});
+
+// Group events
+sdk.on("group-name-change", (data) => {
+  console.log(`🏷️  Group renamed: ${data.groupTitle}`);
+});
+
+sdk.on("participant-added", (data) => {
+  console.log(`➕ Member added to ${data.displayName}`);
+});
+
+sdk.on("participant-removed", (data) => {
+  console.log(`➖ Member removed from ${data.displayName}`);
+});
+
+sdk.on("participant-left", (data) => {
+  console.log(`👋 Member left ${data.displayName}`);
+});
+
+// Typing events
+sdk.on("typing-indicator", (data) => {
+  if (data.display) {
+    console.log(`✏️  Someone is typing...`);
+  }
+});
+
+// Scheduled message events
+sdk.on("scheduled-message-sent", (data) => {
+  console.log(`⏰ Scheduled message sent: ${data.payload?.message}`);
+});
+
+sdk.on("scheduled-message-error", (data) => {
+  console.error(`⏰ Scheduled message failed: ${data.id}`);
+});
+
+// FaceTime events
+sdk.on("incoming-facetime", (data) => {
+  const info = JSON.parse(data);
+  console.log(`📞 Incoming FaceTime: ${info.caller}`);
+});
+
+// FindMy events
+sdk.on("new-findmy-location", (location) => {
+  console.log(`📍 ${location.name} @ ${location.latitude},${location.longitude}`);
+});
+
+await sdk.connect();
+```
+
+## Event Filtering
+
+Filter events based on specific criteria.
+
+```typescript
+// Only log messages from specific chat
+const TARGET_CHAT = "iMessage;-;+1234567890";
+
+sdk.on("new-message", (message) => {
+  const isInTargetChat = message.chats?.some(chat => chat.guid === TARGET_CHAT);
+  
+  if (isInTargetChat) {
+    console.log(`Message in target chat: ${message.text}`);
+  }
+});
+
+// Only log non-personal messages
+sdk.on("new-message", (message) => {
+  if (!message.isFromMe) {
+    console.log(`Received: ${message.text}`);
+  }
+});
+
+// Only log errors for specific chat
+sdk.on("message-send-error", (message) => {
+  const chatGuid = message.chats?.[0]?.guid;
+  
+  if (chatGuid === TARGET_CHAT) {
+    console.error(`Error in target chat: ${message.error}`);
+  }
+});
+```
+
+## Event Deduplication
+
+The SDK automatically deduplicates `new-message` events to prevent loops.
+
+```typescript
+// The SDK tracks processed message GUIDs internally
+// Messages with duplicate GUIDs are automatically filtered
+
+sdk.on("new-message", (message) => {
+  // This will only fire once per unique message.guid
+  console.log(`New message: ${message.guid}`);
+});
+
+// Check deduplication stats
+const processedCount = sdk.getProcessedMessageCount();
+console.log(`Processed ${processedCount} unique messages`);
+
+// Clear old records to prevent memory leaks
+sdk.clearProcessedMessages(1000); // Keep last 1000
+```
+
+<Tip>
+The SDK maintains a set of processed message GUIDs to prevent duplicate event emissions during reconnections. Clear this periodically in long-running applications.
+</Tip>
+
+## Reconnection Handling
+
+Monitor reconnection attempts.
+
+```typescript
+sdk.socket.io.on("reconnect_attempt", (attempt) => {
+  console.log(`Reconnecting... attempt #${attempt}`);
+});
+
+sdk.socket.io.on("reconnect", (attempt) => {
+  console.log(`✓ Reconnected after ${attempt} attempt(s)`);
+});
+
+sdk.socket.io.on("reconnect_error", (error) => {
+  console.error(`Reconnection error: ${error.message}`);
+});
+
+sdk.socket.io.on("reconnect_failed", () => {
+  console.error("All reconnection attempts failed");
+});
+```
+
+<Note>
+The SDK automatically reconnects with exponential backoff. It will never give up trying to reconnect.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Receiving Messages" icon="inbox" href="/guides/receiving-messages">
+    Learn how to handle incoming messages
+  </Card>
+  <Card title="Best Practices" icon="check" href="/guides/best-practices">
+    Optimize event handling and performance
+  </Card>
+</CardGroup>

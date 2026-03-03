@@ -1,0 +1,144 @@
+---
+title: Installation
+description: Install Advanced iMessage Kit SDK using your preferred package manager
+---
+
+# Installation
+
+Install the Advanced iMessage Kit SDK using your preferred package manager.
+
+## Prerequisites
+
+<Note>
+  **Node.js 18.0.0 or higher** is required to use this SDK.
+</Note>
+
+Before installing the SDK, ensure you have:
+
+- Node.js 18+ installed on your system
+- Access to an Advanced iMessage Kit server running on macOS
+- (Optional) An API key if your server requires authentication
+
+## Install the SDK
+
+Choose your preferred package manager:
+
+<CodeGroup>
+```bash npm
+npm install @photon-ai/advanced-imessage-kit
+```
+
+```bash yarn
+yarn add @photon-ai/advanced-imessage-kit
+```
+
+```bash pnpm
+pnpm add @photon-ai/advanced-imessage-kit
+```
+
+```bash bun
+bun add @photon-ai/advanced-imessage-kit
+```
+</CodeGroup>
+
+## TypeScript Support
+
+The SDK is written in TypeScript and includes type definitions out of the box. If you're using TypeScript in your project, you'll get full type safety and autocomplete support.
+
+<CodeGroup>
+```bash npm
+npm install -D typescript
+```
+
+```bash yarn
+yarn add -D typescript
+```
+
+```bash pnpm
+pnpm add -D typescript
+```
+
+```bash bun
+bun add -D typescript
+```
+</CodeGroup>
+
+<Note>
+  TypeScript 5.9.3 or higher is recommended for the best development experience.
+</Note>
+
+## Verify Installation
+
+Verify the installation by creating a simple test file:
+
+```typescript test.ts
+import { SDK } from '@photon-ai/advanced-imessage-kit';
+
+const sdk = SDK({
+  serverUrl: 'http://localhost:1234',
+});
+
+console.log('SDK initialized successfully!');
+```
+
+Run the test file:
+
+<CodeGroup>
+```bash node
+node test.ts
+```
+
+```bash tsx
+npx tsx test.ts
+```
+
+```bash bun
+bun run test.ts
+```
+</CodeGroup>
+
+If you see "SDK initialized successfully!", the installation is complete.
+
+## Server Setup
+
+The SDK connects to the Advanced iMessage Kit server application running on macOS. Make sure you have:
+
+1. **Downloaded and installed** the Advanced iMessage Kit server app on your Mac
+2. **Launched the server** and noted the URL (default: `http://localhost:1234`)
+3. **Generated an API key** if your server is configured to require authentication
+
+<Note>
+  The server must be running on a Mac with iMessage configured. The SDK client can run on any platform (macOS, Linux, Windows) as long as it can reach the server over the network.
+</Note>
+
+## Environment Variables
+
+For easier configuration across environments, you can set environment variables:
+
+```bash .env
+SERVER_URL=http://localhost:1234
+API_KEY=your-api-key-here
+```
+
+Then access them in your code:
+
+```typescript
+import { SDK } from '@photon-ai/advanced-imessage-kit';
+
+const sdk = SDK({
+  serverUrl: process.env.SERVER_URL,
+  apiKey: process.env.API_KEY,
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Build your first iMessage integration in 5 minutes
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Learn about all configuration options
+  </Card>
+</CardGroup>

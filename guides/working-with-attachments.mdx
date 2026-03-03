@@ -1,0 +1,555 @@
+---
+title: 'Working with Attachments'
+description: 'Learn how to send and receive attachments, stickers, and audio messages'
+---
+
+## Overview
+
+The Advanced iMessage Kit SDK supports sending and receiving various types of attachments including images, videos, documents, stickers, and audio messages.
+
+## Sending Attachments
+
+<Steps>
+  <Step title="Prepare the file">
+    Ensure the file exists on your filesystem.
+
+    ```typescript
+    import fs from "fs";
+    import path from "path";
+
+    const filePath = path.join(__dirname, "test-image.png");
+    
+    if (!fs.existsSync(filePath)) {
+      console.error("File not found!");
+      process.exit(1);
+    }
+    ```
+  </Step>
+
+  <Step title="Send the attachment">
+    Use the `attachments.sendAttachment()` method.
+
+    ```typescript
+    const message = await sdk.attachments.sendAttachment({
+      chatGuid: "iMessage;-;+1234567890",
+      filePath: filePath
+    });
+
+    console.log(`Sent: ${message.guid}`);
+    ```
+  </Step>
+
+  <Step title="Check the response">
+    Verify the attachment was sent successfully.
+
+    ```typescript
+    if (message.attachments && message.attachments.length > 0) {
+      const attachment = message.attachments[0];
+      console.log(`Filename: ${attachment.transferName}`);
+      console.log(`MIME type: ${attachment.mimeType}`);
+      console.log(`Size: ${(attachment.totalBytes / 1024).toFixed(2)} KB`);
+    }
+    ```
+  </Step>
+</Steps>
+
+## Complete Attachment Example
+
+```typescript
+import fs from "fs";
+import path from "path";
+import { AdvancedIMessageKit } from "advanced-imessage-kit";
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: "http://localhost:1234",
+  apiKey: "your-api-key"
+});
+
+const CHAT_GUID = "iMessage;-;+1234567890";
+const filePath = path.join(__dirname, "test-image.png");
+
+sdk.on("ready", async () => {
+  if (!fs.existsSync(filePath)) {
+    console.error(`File not found: ${filePath}`);
+    await sdk.close();
+    process.exit(1);
+  }
+
+  const fileName = path.basename(filePath);
+  const fileSize = (fs.statSync(filePath).size / 1024).toFixed(2);
+  console.log(`Sending ${fileName} (${fileSize} KB)`);
+
+  try {
+    const message = await sdk.attachments.sendAttachment({
+      chatGuid: CHAT_GUID,
+      filePath: filePath
+    });
+
+    console.log(`Sent: ${message.guid}`);
+    
+    if (message.attachments && message.attachments.length > 0) {
+      const att = message.attachments[0];
+      console.log(`${att.transferName} (${att.mimeType || "unknown"})`);
+    }
+  } catch (error) {
+    console.error("Failed to send attachment:", error.message);
+  }
+
+  await sdk.close();
+  process.exit(0);
+});
+
+await sdk.connect();
+```
+
+## Audio Messages
+
+Send audio files as voice messages with the audio message flag.
+
+```typescript
+import path from "path";
+
+const audioPath = path.join(__dirname, "voice-memo.mp3");
+
+const message = await sdk.attachments.sendAttachment({
+  chatGuid: "iMessage;-;+1234567890",
+  filePath: audioPath,
+  isAudioMessage: true // Renders as audio message in iMessage
+});
+
+console.log(`Audio message sent: ${message.guid}`);
+console.log(`Created: ${new Date(message.dateCreated).toLocaleString()}`);
+```
+
+<Note>
+Setting `isAudioMessage: true` automatically enables Private API method for proper audio message rendering in iMessage.
+</Note>
+
+## Stickers
+
+Send stickers as standalone messages or attached to existing messages.
+
+<Tabs>
+  <Tab title="Standalone Sticker">
+    Send a sticker as its own message (like sending an image).
+
+    ```typescript
+    import path from "path";
+
+    const stickerPath = path.join(__dirname, "sticker.png");
+
+    const message = await sdk.attachments.sendSticker({
+      chatGuid: "iMessage;-;+1234567890",
+      filePath: stickerPath
+    });
+
+    console.log(`Sticker sent: ${message.guid}`);
+    console.log(`Attachments: ${message.attachments?.length || 0}`);
+
+    if (message.attachments?.[0]) {
+      const att = message.attachments[0];
+      console.log(`MIME type: ${att.mimeType}`);
+      console.log(`Is sticker: ${att.isSticker}`);
+    }
+    ```
+  </Tab>
+
+  <Tab title="Reply Sticker">
+    Attach a sticker to an existing message (like a reaction).
+
+    ```typescript
+    import path from "path";
+
+    const stickerPath = path.join(__dirname, "sticker.png");
+    const targetMessageGuid = "message-guid-to-attach-to";
+
+    const message = await sdk.attachments.sendSticker({
+      chatGuid: "iMessage;-;+1234567890",
+      filePath: stickerPath,
+      selectedMessageGuid: targetMessageGuid,
+      stickerX: 0.5,        // X position (0-1)
+      stickerY: 0.5,        // Y position (0-1)
+      stickerScale: 0.75,   // Scale factor
+      stickerRotation: 0,   // Rotation in degrees
+      stickerWidth: 300     // Width in pixels
+    });
+
+    console.log(`Sticker attached to message: ${targetMessageGuid}`);
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+Stickers require **Private API** to be enabled on your server. They will not work with standard API.
+</Warning>
+
+## Attachment Replies
+
+Send attachments as replies to specific messages.
+
+```typescript
+import path from "path";
+
+// Original message GUID
+const originalMessageGuid = "guid-of-message-to-reply-to";
+const imagePath = path.join(__dirname, "reply-image.jpg");
+
+const reply = await sdk.attachments.sendAttachment({
+  chatGuid: "iMessage;-;+1234567890",
+  filePath: imagePath,
+  selectedMessageGuid: originalMessageGuid
+});
+
+console.log(`Reply with attachment sent: ${reply.guid}`);
+console.log(`Replying to: ${originalMessageGuid}`);
+```
+
+## Receiving Attachments
+
+Download and process incoming attachments.
+
+<Steps>
+  <Step title="Find messages with attachments">
+    Query messages and filter for those with attachments.
+
+    ```typescript
+    const messages = await sdk.messages.getMessages({
+      chatGuid: "iMessage;-;+1234567890",
+      limit: 50,
+      with: ["attachment"]
+    });
+
+    const withAttachments = messages.filter(
+      m => m.attachments && m.attachments.length > 0
+    );
+
+    console.log(`Found ${withAttachments.length} messages with attachments`);
+    ```
+  </Step>
+
+  <Step title="Get attachment details">
+    Retrieve metadata for a specific attachment.
+
+    ```typescript
+    const firstMsg = withAttachments[0];
+    const attachment = firstMsg?.attachments?.[0];
+
+    if (attachment) {
+      console.log(`Attachment: ${attachment.transferName}`);
+      console.log(`Type: ${attachment.mimeType || "unknown"}`);
+      console.log(`Size: ${(attachment.totalBytes / 1024).toFixed(2)} KB`);
+      console.log(`GUID: ${attachment.guid}`);
+    }
+    ```
+  </Step>
+
+  <Step title="Download the attachment">
+    Download the file to your local filesystem.
+
+    ```typescript
+    import fs from "fs";
+    import path from "path";
+
+    const buffer = await sdk.attachments.downloadAttachment(attachment.guid, {
+      original: true // Get original quality
+    });
+
+    const outputPath = path.join("/tmp", attachment.transferName);
+    fs.writeFileSync(outputPath, buffer);
+    
+    console.log(`Saved to: ${outputPath}`);
+    ```
+  </Step>
+</Steps>
+
+## Complete Download Example
+
+```typescript
+import fs from "fs";
+import path from "path";
+
+const CHAT_GUID = "iMessage;-;+1234567890";
+const OUTPUT_DIR = "/tmp";
+
+sdk.on("ready", async () => {
+  try {
+    // Get recent messages with attachments
+    const messages = await sdk.messages.getMessages({
+      chatGuid: CHAT_GUID,
+      limit: 50,
+      with: ["attachment"]
+    });
+
+    const messagesWithAttachments = messages.filter(
+      m => m.attachments && m.attachments.length > 0
+    );
+
+    if (messagesWithAttachments.length === 0) {
+      console.log("No messages with attachments found");
+      await sdk.close();
+      process.exit(0);
+    }
+
+    console.log(`Found ${messagesWithAttachments.length} messages with attachments\n`);
+
+    // Download the first attachment
+    const firstMsg = messagesWithAttachments[0];
+    const attachment = firstMsg?.attachments?.[0];
+
+    if (!attachment) {
+      console.log("No attachment found");
+      await sdk.close();
+      process.exit(0);
+    }
+
+    console.log(`Attachment: ${attachment.transferName}`);
+    console.log(`Type: ${attachment.mimeType || "unknown"}`);
+    console.log(`Size: ${(attachment.totalBytes / 1024).toFixed(2)} KB`);
+    console.log(`GUID: ${attachment.guid}\n`);
+
+    // Get attachment info
+    const info = await sdk.attachments.getAttachment(attachment.guid);
+    console.log(`Info retrieved: ${info.transferName}`);
+
+    // Download attachment
+    console.log("Downloading...");
+    const buffer = await sdk.attachments.downloadAttachment(attachment.guid, {
+      original: true
+    });
+
+    const outputPath = path.join(OUTPUT_DIR, attachment.transferName);
+    fs.writeFileSync(outputPath, buffer);
+    console.log(`Saved to: ${outputPath}`);
+
+    // Get blurhash if it's an image
+    if (attachment.mimeType?.startsWith("image/")) {
+      try {
+        const blurhash = await sdk.attachments.getAttachmentBlurhash(attachment.guid);
+        console.log(`Blurhash: ${blurhash}`);
+      } catch {
+        console.log("Blurhash not available");
+      }
+    }
+
+    // Check for Live Photo
+    if (attachment.hasLivePhoto) {
+      console.log("\nDownloading Live Photo video...");
+      const liveBuffer = await sdk.attachments.downloadAttachmentLive(attachment.guid);
+      const livePath = path.join(OUTPUT_DIR, `${path.parse(attachment.transferName).name}_live.mov`);
+      fs.writeFileSync(livePath, liveBuffer);
+      console.log(`Live Photo saved to: ${livePath}`);
+    }
+
+    // Get total attachment count
+    const totalCount = await sdk.attachments.getAttachmentCount();
+    console.log(`\nTotal attachments in database: ${totalCount}`);
+  } catch (error) {
+    console.error("Failed to download attachment:", error);
+  }
+
+  await sdk.close();
+  process.exit(0);
+});
+
+await sdk.connect();
+```
+
+## Download Options
+
+Customize how attachments are downloaded.
+
+<Tabs>
+  <Tab title="Original Quality">
+    ```typescript
+    const buffer = await sdk.attachments.downloadAttachment(attachmentGuid, {
+      original: true
+    });
+    ```
+  </Tab>
+
+  <Tab title="Custom Dimensions">
+    ```typescript
+    // Resize image to specific dimensions
+    const buffer = await sdk.attachments.downloadAttachment(attachmentGuid, {
+      width: 800,
+      height: 600,
+      quality: 85 // JPEG quality (0-100)
+    });
+    ```
+  </Tab>
+
+  <Tab title="Force Redownload">
+    ```typescript
+    // Force redownload even if cached
+    const buffer = await sdk.attachments.downloadAttachment(attachmentGuid, {
+      force: true
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Live Photos
+
+Download the video component of Live Photos.
+
+```typescript
+import fs from "fs";
+import path from "path";
+
+const attachment = message.attachments?.[0];
+
+if (attachment?.hasLivePhoto) {
+  console.log("This is a Live Photo!");
+  
+  // Download the image
+  const imageBuffer = await sdk.attachments.downloadAttachment(attachment.guid, {
+    original: true
+  });
+  fs.writeFileSync("live-photo.jpg", imageBuffer);
+  
+  // Download the video
+  const videoBuffer = await sdk.attachments.downloadAttachmentLive(attachment.guid);
+  fs.writeFileSync("live-photo.mov", videoBuffer);
+  
+  console.log("Live Photo downloaded (image + video)");
+}
+```
+
+## Blurhash
+
+Generate blurhash strings for image placeholders.
+
+```typescript
+const attachment = message.attachments?.[0];
+
+if (attachment?.mimeType?.startsWith("image/")) {
+  try {
+    const blurhash = await sdk.attachments.getAttachmentBlurhash(attachment.guid);
+    console.log(`Blurhash: ${blurhash}`);
+    
+    // Use blurhash for placeholder while loading full image
+  } catch (error) {
+    console.log("Blurhash not available for this image");
+  }
+}
+```
+
+<Note>
+Blurhash is a compact representation of an image placeholder. It's useful for showing a preview while the full image loads.
+</Note>
+
+## Attachment Count
+
+Get the total number of attachments in your database.
+
+```typescript
+const totalAttachments = await sdk.attachments.getAttachmentCount();
+console.log(`Total attachments: ${totalAttachments}`);
+```
+
+## Listening for New Attachments
+
+Receive attachments in real-time as they arrive.
+
+```typescript
+import fs from "fs";
+import path from "path";
+
+sdk.on("new-message", async (message) => {
+  // Check if message has attachments
+  if (!message.attachments || message.attachments.length === 0) {
+    return;
+  }
+
+  console.log(`\nNew message with ${message.attachments.length} attachment(s)`);
+  
+  for (const attachment of message.attachments) {
+    console.log(`  - ${attachment.transferName} (${attachment.mimeType})`);
+    
+    try {
+      // Auto-download image attachments
+      if (attachment.mimeType?.startsWith("image/")) {
+        const buffer = await sdk.attachments.downloadAttachment(attachment.guid, {
+          original: true
+        });
+        
+        const savePath = path.join("/tmp/downloads", attachment.transferName);
+        fs.writeFileSync(savePath, buffer);
+        
+        console.log(`    Saved to: ${savePath}`);
+      }
+    } catch (error) {
+      console.error(`    Failed to download: ${error.message}`);
+    }
+  }
+});
+```
+
+## Custom Filenames
+
+Specify custom filenames when sending attachments.
+
+```typescript
+import path from "path";
+
+const filePath = path.join(__dirname, "image.jpg");
+
+const message = await sdk.attachments.sendAttachment({
+  chatGuid: "iMessage;-;+1234567890",
+  filePath: filePath,
+  fileName: "vacation-photo.jpg" // Custom filename
+});
+
+console.log(`Sent as: ${message.attachments?.[0]?.transferName}`);
+```
+
+## Supported File Types
+
+The SDK supports all file types that iMessage supports:
+
+- **Images**: JPG, PNG, GIF, HEIC, HEIF
+- **Videos**: MOV, MP4, M4V
+- **Audio**: MP3, M4A, WAV, AAC
+- **Documents**: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX
+- **Archives**: ZIP, RAR
+- **Other**: Any file type iMessage can handle
+
+<Tip>
+Large files may take longer to upload. Consider showing upload progress to users in production applications.
+</Tip>
+
+## Error Handling
+
+Handle common attachment errors gracefully.
+
+```typescript
+try {
+  const message = await sdk.attachments.sendAttachment({
+    chatGuid: CHAT_GUID,
+    filePath: filePath
+  });
+  
+  console.log("Attachment sent successfully");
+} catch (error) {
+  if (error.code === "ENOENT") {
+    console.error("File not found");
+  } else if (error.response?.status === 413) {
+    console.error("File too large");
+  } else if (error.response?.status === 415) {
+    console.error("Unsupported file type");
+  } else {
+    console.error("Failed to send attachment:", error.message);
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sending Messages" icon="paper-plane" href="/guides/sending-messages">
+    Learn more about message sending features
+  </Card>
+  <Card title="Best Practices" icon="check" href="/guides/best-practices">
+    Optimize your attachment handling
+  </Card>
+</CardGroup>

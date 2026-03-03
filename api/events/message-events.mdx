@@ -1,0 +1,303 @@
+---
+title: 'Message Events'
+description: 'Events related to receiving, updating, and sending messages'
+icon: 'message'
+---
+
+## Overview
+
+Message events are emitted when messages are received, updated, or encounter errors during sending. All message events provide a `MessageResponse` object containing the complete message data.
+
+## Events
+
+### new-message
+
+Emitted when a new message is received.
+
+<ResponseField name="data" type="MessageResponse">
+  The complete message object
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string" required>
+      Unique identifier for the message
+    </ResponseField>
+    
+    <ResponseField name="text" type="string" required>
+      The text content of the message
+    </ResponseField>
+    
+    <ResponseField name="dateCreated" type="number" required>
+      Unix timestamp (milliseconds) when the message was created
+    </ResponseField>
+    
+    <ResponseField name="isFromMe" type="boolean" required>
+      Whether the message was sent by you
+    </ResponseField>
+    
+    <ResponseField name="handle" type="HandleResponse | null">
+      The sender/recipient handle information
+    </ResponseField>
+    
+    <ResponseField name="chats" type="ChatResponse[]">
+      Array of chats this message belongs to
+    </ResponseField>
+    
+    <ResponseField name="attachments" type="AttachmentResponse[]">
+      Array of attachments included in the message
+    </ResponseField>
+    
+    <ResponseField name="subject" type="string">
+      Message subject (if any)
+    </ResponseField>
+    
+    <ResponseField name="error" type="number">
+      Error code (0 if no error)
+    </ResponseField>
+    
+    <ResponseField name="dateRead" type="number | null">
+      Unix timestamp when the message was read
+    </ResponseField>
+    
+    <ResponseField name="dateDelivered" type="number | null">
+      Unix timestamp when the message was delivered
+    </ResponseField>
+    
+    <ResponseField name="replyToGuid" type="string | null">
+      GUID of the message this is replying to
+    </ResponseField>
+    
+    <ResponseField name="expressiveSendStyleId" type="string | null">
+      iMessage effect ID (e.g., "com.apple.messages.effect.CKConfettiEffect")
+    </ResponseField>
+    
+    <ResponseField name="associatedMessageGuid" type="string | null">
+      GUID of associated message (for reactions, etc.)
+    </ResponseField>
+    
+    <ResponseField name="associatedMessageType" type="string | null">
+      Type of association (e.g., "like", "love", "dislike")
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Basic Usage
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('new-message', (message) => {
+  console.log(`New message from ${message.handle?.id}: ${message.text}`);
+});
+
+await client.connect();
+```
+
+```typescript With Filtering
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('new-message', (message) => {
+  // Only process messages from others
+  if (message.isFromMe) return;
+  
+  // Check for attachments
+  if (message.attachments && message.attachments.length > 0) {
+    console.log(`Received ${message.attachments.length} attachment(s)`);
+  }
+  
+  // Check for replies
+  if (message.replyToGuid) {
+    console.log(`This is a reply to message: ${message.replyToGuid}`);
+  }
+  
+  console.log(message.text);
+});
+
+await client.connect();
+```
+
+```typescript Auto-Reply
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('new-message', async (message) => {
+  // Don't reply to our own messages
+  if (message.isFromMe) return;
+  
+  // Don't reply to group chats
+  if (message.chats && message.chats.length > 0 && message.chats[0].participants.length > 2) {
+    return;
+  }
+  
+  // Get the chat GUID to reply to
+  const chatGuid = message.chats?.[0]?.guid;
+  if (!chatGuid) return;
+  
+  // Send auto-reply
+  await client.messages.send({
+    chatGuid,
+    message: 'Thanks for your message! I\'ll get back to you soon.'
+  });
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+---
+
+### updated-message
+
+Emitted when an existing message is updated (e.g., edited, read status changed, delivered).
+
+<ResponseField name="data" type="MessageResponse">
+  The updated message object with the same structure as `new-message`
+</ResponseField>
+
+<CodeGroup>
+```typescript Track Read Status
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('updated-message', (message) => {
+  if (message.dateRead && message.isFromMe) {
+    console.log(`Your message was read: ${message.text}`);
+  }
+});
+
+await client.connect();
+```
+
+```typescript Track Edits
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('updated-message', (message) => {
+  if (message.dateEdited) {
+    console.log(`Message edited: ${message.text}`);
+    console.log(`Edited at: ${new Date(message.dateEdited)}`);
+  }
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+---
+
+### message-send-error
+
+Emitted when a message fails to send.
+
+<ResponseField name="data" type="MessageResponse">
+  The message object that failed to send
+  
+  <Expandable title="properties">
+    <ResponseField name="error" type="number" required>
+      Error code indicating the type of failure
+    </ResponseField>
+    
+    <ResponseField name="guid" type="string" required>
+      Unique identifier for the failed message
+    </ResponseField>
+    
+    <ResponseField name="text" type="string" required>
+      The text content that failed to send
+    </ResponseField>
+    
+    <ResponseField name="tempGuid" type="string">
+      Temporary GUID that was assigned when sending
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Handle Send Errors
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('message-send-error', (message) => {
+  console.error(`Failed to send message: ${message.text}`);
+  console.error(`Error code: ${message.error}`);
+  console.error(`Message GUID: ${message.guid}`);
+});
+
+await client.connect();
+```
+
+```typescript Retry Failed Messages
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('message-send-error', async (message) => {
+  console.error(`Message failed: ${message.text}`);
+  
+  // Get the chat GUID to retry
+  const chatGuid = message.chats?.[0]?.guid;
+  if (!chatGuid) return;
+  
+  // Wait 2 seconds and retry
+  setTimeout(async () => {
+    try {
+      await client.messages.send({
+        chatGuid,
+        message: message.text
+      });
+      console.log('Message resent successfully');
+    } catch (error) {
+      console.error('Retry also failed:', error);
+    }
+  }, 2000);
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+## Event Methods
+
+### on()
+
+Register a listener that will be called every time the event is emitted.
+
+```typescript
+client.on('new-message', (message) => {
+  console.log(message);
+});
+```
+
+### once()
+
+Register a listener that will be called only once, then automatically removed.
+
+```typescript
+client.once('new-message', (message) => {
+  console.log('First message received:', message);
+});
+```
+
+### off()
+
+Remove a specific listener from an event.
+
+```typescript
+const handler = (message) => {
+  console.log(message);
+};
+
+client.on('new-message', handler);
+
+// Later, remove the listener
+client.off('new-message', handler);
+```
+
+<Note>
+You must pass the exact same function reference to `off()` that was passed to `on()`. Anonymous functions cannot be removed.
+</Note>

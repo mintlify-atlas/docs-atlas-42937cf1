@@ -1,0 +1,222 @@
+---
+title: 'Query handles'
+description: 'Search, retrieve, and count handles with flexible filtering'
+keywords: ['handles', 'queryHandles', 'getHandle', 'getHandleCount', 'search', 'filter']
+---
+
+## queryHandles()
+
+Queries handles with optional filtering, pagination, and relationship loading.
+
+### Parameters
+
+<ParamField path="options" type="object">
+  Query options for filtering and pagination.
+  
+  <Expandable title="properties">
+    <ParamField path="options.address" type="string">
+      Filter by specific phone number or email address.
+    </ParamField>
+    
+    <ParamField path="options.with" type="string[]">
+      Related data to include. Options: `["messages", "chats"]`.
+    </ParamField>
+    
+    <ParamField path="options.offset" type="number" default="0">
+      Number of results to skip for pagination.
+    </ParamField>
+    
+    <ParamField path="options.limit" type="number" default="100">
+      Maximum number of results to return.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="result" type="object" required>
+  Query results with data and pagination metadata.
+  
+  <Expandable title="properties">
+    <ResponseField name="data" type="array" required>
+      Array of handle objects matching the query.
+    </ResponseField>
+    
+    <ResponseField name="metadata" type="object" required>
+      Pagination information.
+      
+      <Expandable title="properties">
+        <ResponseField name="total" type="number" required>
+          Total number of handles matching the query.
+        </ResponseField>
+        
+        <ResponseField name="offset" type="number" required>
+          Current offset value.
+        </ResponseField>
+        
+        <ResponseField name="limit" type="number" required>
+          Current limit value.
+        </ResponseField>
+        
+        <ResponseField name="count" type="number" required>
+          Number of handles returned in this response.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+// Query all handles
+const allHandles = await client.handle.queryHandles();
+console.log(`Total handles: ${allHandles.metadata.total}`);
+console.log(`Returned: ${allHandles.data.length}`);
+```
+
+### Filter by address
+
+```typescript
+const result = await client.handle.queryHandles({
+  address: '+1234567890'
+});
+
+if (result.data.length > 0) {
+  console.log('Found handle:', result.data[0]);
+}
+```
+
+### Include related data
+
+```typescript
+const handlesWithChats = await client.handle.queryHandles({
+  with: ['chats', 'messages'],
+  limit: 50
+});
+
+handlesWithChats.data.forEach(handle => {
+  console.log(`${handle.address} has ${handle.chats?.length || 0} chats`);
+});
+```
+
+### Pagination
+
+```typescript
+const pageSize = 25;
+let offset = 0;
+let allHandles = [];
+
+while (true) {
+  const result = await client.handle.queryHandles({
+    offset,
+    limit: pageSize
+  });
+  
+  allHandles.push(...result.data);
+  
+  if (result.data.length < pageSize) {
+    break; // No more results
+  }
+  
+  offset += pageSize;
+}
+
+console.log(`Loaded ${allHandles.length} total handles`);
+```
+
+<Tip>Use the `with` parameter to eagerly load related data and reduce the number of API calls needed.</Tip>
+
+---
+
+## getHandle()
+
+Retrieves a specific handle by its GUID.
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  The unique GUID identifier of the handle to retrieve.
+</ParamField>
+
+### Returns
+
+<ResponseField name="handle" type="object" required>
+  The handle object containing address, service, and metadata.
+  
+  <Expandable title="properties">
+    <ResponseField name="originalROWID" type="number" required>
+      Original database row ID.
+    </ResponseField>
+    
+    <ResponseField name="address" type="string" required>
+      Phone number or email address.
+    </ResponseField>
+    
+    <ResponseField name="service" type="string" required>
+      Service type (e.g., "iMessage", "SMS").
+    </ResponseField>
+    
+    <ResponseField name="country" type="string">
+      Country code if applicable.
+    </ResponseField>
+    
+    <ResponseField name="uncanonicalizedId" type="string">
+      Original unformatted identifier.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+const handleGuid = 'handle-guid-123';
+const handle = await client.handle.getHandle(handleGuid);
+
+console.log('Address:', handle.address);
+console.log('Service:', handle.service);
+console.log('Country:', handle.country);
+```
+
+<Info>Handle GUIDs are typically obtained from chat participants or message sender information.</Info>
+
+---
+
+## getHandleCount()
+
+Retrieves the total number of handles stored in the system.
+
+### Returns
+
+<ResponseField name="count" type="number" required>
+  Total number of handles.
+</ResponseField>
+
+### Example
+
+```typescript
+const totalHandles = await client.handle.getHandleCount();
+console.log(`Total handles in system: ${totalHandles}`);
+```
+
+### Use cases
+
+- Display statistics in dashboards
+- Determine if pagination is needed before querying
+- Monitor handle growth over time
+
+### Quick stats example
+
+```typescript
+const total = await client.handle.getHandleCount();
+const { data } = await client.handle.queryHandles({
+  with: ['chats'],
+  limit: total
+});
+
+const withChats = data.filter(h => h.chats && h.chats.length > 0);
+
+console.log(`Total handles: ${total}`);
+console.log(`Handles with chats: ${withChats.length}`);
+console.log(`Handles without chats: ${total - withChats.length}`);
+```

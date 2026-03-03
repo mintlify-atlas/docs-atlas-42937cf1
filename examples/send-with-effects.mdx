@@ -1,0 +1,257 @@
+---
+title: 'Message Effects'
+description: 'Send messages with visual effects and animations'
+icon: 'wand-magic-sparkles'
+---
+
+## Overview
+
+Add visual flair to your messages with iMessage effects like confetti, fireworks, lasers, and more. Effects require Private API to be enabled.
+
+<Warning>
+  Message effects require **Private API** mode. Make sure Private API is enabled in your server configuration.
+</Warning>
+
+## Available Effects
+
+Here are all the message effects you can use:
+
+```typescript
+const MESSAGE_EFFECTS = {
+    // Full screen effects
+    confetti: "com.apple.messages.effect.CKConfettiEffect",
+    lasers: "com.apple.messages.effect.CKHappyBirthdayEffect",
+    fireworks: "com.apple.messages.effect.CKFireworksEffect",
+    balloons: "com.apple.messages.effect.CKBalloonEffect",
+    hearts: "com.apple.messages.effect.CKHeartEffect",
+    shootingStar: "com.apple.messages.effect.CKShootingStarEffect",
+    celebration: "com.apple.messages.effect.CKSparklesEffect",
+    echo: "com.apple.messages.effect.CKEchoEffect",
+    spotlight: "com.apple.messages.effect.CKSpotlightEffect",
+    
+    // Bubble effects
+    gentle: "com.apple.MobileSMS.expressivesend.gentle",
+    loud: "com.apple.MobileSMS.expressivesend.loud",
+    slam: "com.apple.MobileSMS.expressivesend.impact",
+    invisible_ink: "com.apple.MobileSMS.expressivesend.invisibleink",
+} as const;
+```
+
+## Sending Messages with Effects
+
+### Full Screen Effects
+
+<CodeGroup>
+
+```typescript Confetti
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "Happy Birthday!",
+    effectId: "com.apple.messages.effect.CKConfettiEffect",
+});
+console.log(`Sent with confetti: ${message.guid}`);
+```
+
+```typescript Fireworks
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "Celebration time!",
+    effectId: "com.apple.messages.effect.CKFireworksEffect",
+});
+console.log(`Sent with fireworks: ${message.guid}`);
+```
+
+```typescript Lasers
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "Pew pew pew!",
+    effectId: "com.apple.messages.effect.CKHappyBirthdayEffect",
+});
+console.log(`Sent with lasers: ${message.guid}`);
+```
+
+```typescript Hearts
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "I love you!",
+    effectId: "com.apple.messages.effect.CKHeartEffect",
+});
+console.log(`Sent with hearts: ${message.guid}`);
+```
+
+</CodeGroup>
+
+### Bubble Effects
+
+<CodeGroup>
+
+```typescript Loud
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "IMPORTANT MESSAGE!",
+    effectId: "com.apple.MobileSMS.expressivesend.loud",
+});
+```
+
+```typescript Gentle
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "Shh...",
+    effectId: "com.apple.MobileSMS.expressivesend.gentle",
+});
+```
+
+```typescript Slam
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "BAM!",
+    effectId: "com.apple.MobileSMS.expressivesend.impact",
+});
+```
+
+```typescript Invisible Ink
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "Secret message!",
+    effectId: "com.apple.MobileSMS.expressivesend.invisibleink",
+});
+```
+
+</CodeGroup>
+
+## Complete Example
+
+Here's a complete example that sends messages with different effects:
+
+```typescript
+import { createSDK, handleError } from "./utils";
+
+const CHAT_GUID = process.env.CHAT_GUID || "any;-;+13322593374";
+
+const MESSAGE_EFFECTS = {
+    confetti: "com.apple.messages.effect.CKConfettiEffect",
+    lasers: "com.apple.messages.effect.CKHappyBirthdayEffect",
+    fireworks: "com.apple.messages.effect.CKFireworksEffect",
+    balloons: "com.apple.messages.effect.CKBalloonEffect",
+    hearts: "com.apple.messages.effect.CKHeartEffect",
+    shootingStar: "com.apple.messages.effect.CKShootingStarEffect",
+    celebration: "com.apple.messages.effect.CKSparklesEffect",
+    echo: "com.apple.messages.effect.CKEchoEffect",
+    spotlight: "com.apple.messages.effect.CKSpotlightEffect",
+    gentle: "com.apple.MobileSMS.expressivesend.gentle",
+    loud: "com.apple.MobileSMS.expressivesend.loud",
+    slam: "com.apple.MobileSMS.expressivesend.impact",
+    invisible_ink: "com.apple.MobileSMS.expressivesend.invisibleink",
+} as const;
+
+async function main() {
+    const sdk = createSDK();
+
+    sdk.on("ready", async () => {
+        console.log("Message effects example (requires Private API)\n");
+
+        try {
+            // Confetti effect
+            const confettiMessage = await sdk.messages.sendMessage({
+                chatGuid: CHAT_GUID,
+                message: "Happy Birthday!",
+                effectId: MESSAGE_EFFECTS.confetti,
+            });
+            console.log(`confetti: ${confettiMessage.guid}`);
+
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+
+            // Lasers effect
+            const lasersMessage = await sdk.messages.sendMessage({
+                chatGuid: CHAT_GUID,
+                message: "Pew pew pew!",
+                effectId: MESSAGE_EFFECTS.lasers,
+            });
+            console.log(`lasers: ${lasersMessage.guid}`);
+
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+
+            // Loud effect
+            const loudMessage = await sdk.messages.sendMessage({
+                chatGuid: CHAT_GUID,
+                message: "IMPORTANT MESSAGE!",
+                effectId: MESSAGE_EFFECTS.loud,
+            });
+            console.log(`loud: ${loudMessage.guid}`);
+
+            console.log("\nAvailable effects:");
+            console.log(JSON.stringify(MESSAGE_EFFECTS, null, 2));
+        } catch (error) {
+            handleError(error, "Failed to send message with effect");
+            console.log("\nNote: Effects require Private API to be enabled");
+        }
+
+        await sdk.close();
+        process.exit(0);
+    });
+
+    await sdk.connect();
+}
+
+main().catch(console.error);
+```
+
+## Effect Types Reference
+
+<AccordionGroup>
+  <Accordion title="Full Screen Effects">
+    These effects animate across the entire screen:
+    
+    - **Confetti** - Colorful confetti falls from the top
+    - **Lasers** - Laser beams shoot across the screen
+    - **Fireworks** - Fireworks explode on screen
+    - **Balloons** - Balloons float up from the bottom
+    - **Hearts** - Hearts float across the screen
+    - **Shooting Star** - A shooting star flies by
+    - **Celebration** - Sparkles and celebration effects
+    - **Echo** - Message echoes across screen
+    - **Spotlight** - Message appears in a spotlight
+  </Accordion>
+
+  <Accordion title="Bubble Effects">
+    These effects modify how the message bubble appears:
+    
+    - **Gentle** - Message appears softly and quietly
+    - **Loud** - Message appears large and dramatically
+    - **Slam** - Message slams down with impact
+    - **Invisible Ink** - Message is hidden until tapped
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Tip>
+  Add delays between messages with effects to ensure each animation completes:
+  ```typescript
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  ```
+</Tip>
+
+<Note>
+  Effects may not display on all devices. Older iOS versions or non-Apple devices might show the message without the effect.
+</Note>
+
+## Troubleshooting
+
+If effects aren't working:
+
+1. **Check Private API Status** - Effects require Private API mode
+2. **Verify Server Version** - Ensure your server supports Private API
+3. **Check Recipient Device** - Recipient must be using an Apple device with iMessage
+4. **Test Effect ID** - Make sure you're using the correct effect identifier string
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Rich Links" icon="link" href="/examples/rich-links">
+    Send messages with link previews
+  </Card>
+  <Card title="Reactions" icon="heart" href="/examples/reactions-and-tapbacks">
+    Add reactions to messages
+  </Card>
+</CardGroup>

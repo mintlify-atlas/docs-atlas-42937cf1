@@ -1,0 +1,358 @@
+---
+title: 'Rich Link Previews'
+description: 'Send messages with beautiful link previews'
+icon: 'link'
+---
+
+## Overview
+
+When you send a URL in iMessage, it can automatically generate a rich preview with an image, title, and description. The SDK supports this feature through the `richLink` parameter.
+
+## Basic Rich Link
+
+Send a message with a rich link preview:
+
+```typescript
+import { createSDK, handleError } from "./utils";
+
+const CHAT_GUID = process.env.CHAT_GUID || "any;-;+1234567890";
+
+async function main() {
+    const sdk = createSDK();
+
+    sdk.on("ready", async () => {
+        try {
+            const message = await sdk.messages.sendMessage({
+                chatGuid: CHAT_GUID,
+                message: "https://photon.codes/",
+                richLink: true,
+            });
+
+            console.log(`sent rich link: ${message.guid}`);
+            console.log(`balloonBundleId: ${message.balloonBundleId}`);
+            console.log(`${new Date(message.dateCreated).toLocaleString()}`);
+        } catch (error) {
+            handleError(error, "Failed to send rich link message");
+        }
+
+        await sdk.close();
+        process.exit(0);
+    });
+
+    await sdk.connect();
+}
+
+main().catch(console.error);
+```
+
+## How It Works
+
+<Steps>
+  <Step title="Enable Rich Link">
+    Set `richLink: true` in your `sendMessage` call
+  </Step>
+  <Step title="Include URL">
+    The message text must contain a valid URL
+  </Step>
+  <Step title="Preview Generation">
+    iMessage fetches the URL's metadata (title, description, image) and generates a preview
+  </Step>
+  <Step title="Display">
+    The recipient sees a rich preview card with the link's content
+  </Step>
+</Steps>
+
+## Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  The GUID of the chat to send to
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  The URL to send (must be a valid HTTP/HTTPS URL)
+</ParamField>
+
+<ParamField path="richLink" type="boolean" required>
+  Set to `true` to enable rich link preview generation
+</ParamField>
+
+## Multiple Rich Links
+
+Send several rich links in sequence:
+
+```typescript
+const urls = [
+    "https://photon.codes/",
+    "https://github.com/",
+    "https://apple.com/",
+];
+
+sdk.on("ready", async () => {
+    for (const url of urls) {
+        const message = await sdk.messages.sendMessage({
+            chatGuid: CHAT_GUID,
+            message: url,
+            richLink: true,
+        });
+        
+        console.log(`Sent: ${url}`);
+        
+        // Wait between sends
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
+    await sdk.close();
+});
+```
+
+## URL with Additional Text
+
+You can include text along with the URL:
+
+```typescript
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "Check this out! https://photon.codes/",
+    richLink: true,
+});
+```
+
+<Note>
+  The rich preview will be generated for the URL, while the rest of the text appears as normal message text.
+</Note>
+
+## Advanced Examples
+
+### Link Sharing Bot
+
+```typescript
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const text = message.text?.toLowerCase() || "";
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    // Respond to requests with relevant links
+    let url = "";
+    
+    if (text.includes("documentation") || text.includes("docs")) {
+        url = "https://photon.codes/docs";
+    } else if (text.includes("github")) {
+        url = "https://github.com/";
+    } else if (text.includes("news")) {
+        url = "https://news.ycombinator.com/";
+    }
+
+    if (url) {
+        await sdk.messages.sendMessage({
+            chatGuid: chat.guid,
+            message: url,
+            richLink: true,
+        });
+    }
+});
+```
+
+### URL Expander
+
+Detect short URLs and send rich previews:
+
+```typescript
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    // Find URLs in message
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urls = message.text?.match(urlRegex);
+
+    if (urls && urls.length > 0) {
+        for (const url of urls) {
+            // Check if it's a short URL
+            if (url.includes("bit.ly") || url.includes("t.co") || url.includes("tinyurl.com")) {
+                // Send as rich link
+                await sdk.messages.sendMessage({
+                    chatGuid: chat.guid,
+                    message: `Full preview: ${url}`,
+                    richLink: true,
+                });
+            }
+        }
+    }
+});
+```
+
+### Content Recommendations
+
+```typescript
+const recommendations = {
+    "tech": [
+        "https://techcrunch.com/",
+        "https://theverge.com/",
+        "https://arstechnica.com/",
+    ],
+    "news": [
+        "https://news.ycombinator.com/",
+        "https://reddit.com/r/news",
+    ],
+    "dev": [
+        "https://github.com/trending",
+        "https://stackoverflow.com/",
+    ],
+};
+
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const text = message.text?.toLowerCase() || "";
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    for (const [category, urls] of Object.entries(recommendations)) {
+        if (text.includes(category)) {
+            const randomUrl = urls[Math.floor(Math.random() * urls.length)];
+            
+            await sdk.messages.sendMessage({
+                chatGuid: chat.guid,
+                message: `Here's a ${category} recommendation: ${randomUrl}`,
+                richLink: true,
+            });
+            
+            break;
+        }
+    }
+});
+```
+
+## Metadata
+
+When a rich link is sent, the message includes special metadata:
+
+```typescript
+const message = await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "https://photon.codes/",
+    richLink: true,
+});
+
+console.log(message.balloonBundleId); // Identifies rich link type
+console.log(message.payloadData); // Contains link metadata
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Validate URLs before sending">
+    Ensure the URL is valid and accessible:
+    ```typescript
+    function isValidUrl(string: string) {
+        try {
+            new URL(string);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    if (isValidUrl(url)) {
+        await sdk.messages.sendMessage({
+            chatGuid: CHAT_GUID,
+            message: url,
+            richLink: true,
+        });
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Handle preview generation failures">
+    Not all URLs will generate previews. Wrap in try-catch:
+    ```typescript
+    try {
+        await sdk.messages.sendMessage({
+            chatGuid: CHAT_GUID,
+            message: url,
+            richLink: true,
+        });
+    } catch (error) {
+        console.error("Failed to send rich link:", error);
+        // Optionally send as plain text
+        await sdk.messages.sendMessage({
+            chatGuid: CHAT_GUID,
+            message: url,
+        });
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Don't spam rich links">
+    Add delays between sending multiple rich links:
+    ```typescript
+    for (const url of urls) {
+        await sdk.messages.sendMessage({...});
+        await new Promise(r => setTimeout(r, 2000));
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  Rich link previews work best with URLs that have proper Open Graph or Twitter Card metadata.
+</Tip>
+
+## Supported URL Types
+
+Rich link previews work with:
+
+- **Websites** with Open Graph metadata
+- **YouTube** videos
+- **Twitter** posts
+- **Articles** with proper meta tags
+- **GitHub** repositories
+- **App Store** apps
+- Most modern web content
+
+## Troubleshooting
+
+If rich links aren't working:
+
+1. **Check URL validity** - Ensure the URL is accessible and returns a 200 status
+2. **Verify metadata** - The website should have Open Graph or similar meta tags
+3. **Test in native iMessage** - If it doesn't work there, it won't work via SDK
+4. **Check network** - Ensure the server can access the URL
+
+## Plain URLs vs Rich Links
+
+<CodeGroup>
+
+```typescript Plain URL
+// Sends as plain text link
+await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "https://photon.codes/",
+});
+```
+
+```typescript Rich Link
+// Sends with preview card
+await sdk.messages.sendMessage({
+    chatGuid: CHAT_GUID,
+    message: "https://photon.codes/",
+    richLink: true, // Enables preview
+});
+```
+
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Message Effects" icon="wand-magic-sparkles" href="/examples/send-with-effects">
+    Add visual effects to messages
+  </Card>
+  <Card title="Polls" icon="square-poll-vertical" href="/examples/polls">
+    Create interactive polls
+  </Card>
+</CardGroup>

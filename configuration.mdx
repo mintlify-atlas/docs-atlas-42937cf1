@@ -1,0 +1,257 @@
+---
+title: Configuration
+description: Configure the Advanced iMessage Kit SDK client with all available options
+---
+
+# Configuration
+
+The Advanced iMessage Kit SDK is configured when you initialize it using the `SDK()` function. All configuration options are passed through the `ClientConfig` interface.
+
+## Basic Configuration
+
+Minimal configuration to connect to a local server:
+
+```typescript
+import { SDK } from '@photon-ai/advanced-imessage-kit';
+
+const sdk = SDK({
+  serverUrl: 'http://localhost:1234',
+});
+```
+
+## ClientConfig Interface
+
+All configuration options available for the SDK client:
+
+<ParamField path="serverUrl" type="string" default="http://localhost:1234">
+  The URL of the Advanced iMessage Kit server.
+  
+  This is the base URL where your server is running. For local development, this is typically `http://localhost:1234`. For remote servers, use the full URL including protocol and port.
+  
+  ```typescript
+  serverUrl: 'http://localhost:1234'
+  serverUrl: 'https://imessage.example.com'
+  serverUrl: 'http://192.168.1.100:1234'
+  ```
+</ParamField>
+
+<ParamField path="apiKey" type="string">
+  Optional API key for authentication.
+  
+  If your server is configured to require API key authentication, provide it here. The API key is sent in the `X-API-Key` header for HTTP requests and in the Socket.IO auth payload for WebSocket connections.
+  
+  ```typescript
+  apiKey: process.env.API_KEY
+  apiKey: 'your-api-key-here'
+  ```
+  
+  <Note>
+    Without an API key, the SDK operates in "legacy mode" for servers that don't require authentication. The `ready` event will fire immediately upon connection.
+  </Note>
+</ParamField>
+
+<ParamField path="logLevel" type="'debug' | 'info' | 'warn' | 'error'" default="info">
+  The logging level for the SDK.
+  
+  Controls the verbosity of log output:
+  - `debug` - All logs including detailed debugging information
+  - `info` - Informational messages, warnings, and errors
+  - `warn` - Only warnings and errors
+  - `error` - Only errors
+  
+  ```typescript
+  logLevel: 'debug'  // Development
+  logLevel: 'info'   // Production (default)
+  logLevel: 'warn'   // Quiet mode
+  logLevel: 'error'  // Errors only
+  ```
+</ParamField>
+
+<ParamField path="logToFile" type="boolean" default="true">
+  Whether to write logs to a file.
+  
+  When enabled, the SDK writes logs to a file in addition to console output. Disable this in serverless or containerized environments where file system access is limited.
+  
+  ```typescript
+  logToFile: true   // Enable file logging (default)
+  logToFile: false  // Console only
+  ```
+  
+  <Note>
+    File logging is useful for debugging production issues, but may consume disk space over time.
+  </Note>
+</ParamField>
+
+## Configuration Examples
+
+### Development Configuration
+
+For local development with detailed logging:
+
+```typescript
+import { SDK } from '@photon-ai/advanced-imessage-kit';
+
+const sdk = SDK({
+  serverUrl: 'http://localhost:1234',
+  logLevel: 'debug',
+  logToFile: true,
+});
+```
+
+### Production Configuration
+
+For production with environment variables and error-level logging:
+
+```typescript
+import { SDK } from '@photon-ai/advanced-imessage-kit';
+
+const sdk = SDK({
+  serverUrl: process.env.SERVER_URL ?? 'http://localhost:1234',
+  apiKey: process.env.API_KEY,
+  logLevel: 'error',
+  logToFile: false,
+});
+```
+
+### Remote Server Configuration
+
+Connecting to a remote server with authentication:
+
+```typescript
+import { SDK } from '@photon-ai/advanced-imessage-kit';
+
+const sdk = SDK({
+  serverUrl: 'https://imessage.company.com',
+  apiKey: process.env.IMESSAGE_API_KEY,
+  logLevel: 'info',
+  logToFile: true,
+});
+```
+
+### TypeScript Configuration
+
+Full type safety with TypeScript:
+
+```typescript
+import { SDK, type ClientConfig } from '@photon-ai/advanced-imessage-kit';
+
+const config: ClientConfig = {
+  serverUrl: process.env.SERVER_URL ?? 'http://localhost:1234',
+  apiKey: process.env.API_KEY,
+  logLevel: 'info',
+  logToFile: true,
+};
+
+const sdk = SDK(config);
+```
+
+## Environment Variables
+
+Use environment variables for flexible configuration across environments:
+
+<Steps>
+  <Step title="Create .env file">
+    Create a `.env` file in your project root:
+    
+    ```bash .env
+    SERVER_URL=http://localhost:1234
+    API_KEY=your-api-key-here
+    LOG_LEVEL=info
+    ```
+  </Step>
+  
+  <Step title="Install dotenv (if needed)">
+    If you're not using a framework that loads `.env` files automatically:
+    
+    ```bash
+    npm install dotenv
+    ```
+  </Step>
+  
+  <Step title="Load environment variables">
+    Load the variables in your application:
+    
+    ```typescript
+    import 'dotenv/config';
+    import { SDK } from '@photon-ai/advanced-imessage-kit';
+    
+    const sdk = SDK({
+      serverUrl: process.env.SERVER_URL,
+      apiKey: process.env.API_KEY,
+      logLevel: process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error',
+    });
+    ```
+  </Step>
+</Steps>
+
+## Singleton Pattern
+
+The SDK uses a singleton pattern - calling `SDK()` multiple times returns the same instance:
+
+```typescript
+import { SDK } from '@photon-ai/advanced-imessage-kit';
+
+// First call creates the instance
+const sdk1 = SDK({ serverUrl: 'http://localhost:1234' });
+
+// Subsequent calls return the same instance
+const sdk2 = SDK(); // Returns sdk1
+const sdk3 = SDK(); // Returns sdk1
+
+console.log(sdk1 === sdk2); // true
+console.log(sdk2 === sdk3); // true
+```
+
+<Note>
+  You can also use `AdvancedIMessageKit.getInstance()` directly for the same behavior. The `SDK()` export is a convenience wrapper around this method.
+</Note>
+
+## Advanced: Direct Instantiation
+
+For advanced use cases where you need multiple instances (not recommended for most applications):
+
+```typescript
+import { AdvancedIMessageKit } from '@photon-ai/advanced-imessage-kit';
+
+// Create a new instance directly (bypasses singleton)
+const sdk = new AdvancedIMessageKit({
+  serverUrl: 'http://localhost:1234',
+  apiKey: process.env.API_KEY,
+  logLevel: 'info',
+});
+```
+
+<Warning>
+  Direct instantiation creates a new instance that is not shared globally. This is rarely needed and can lead to multiple WebSocket connections. Use the singleton `SDK()` function in most cases.
+</Warning>
+
+## Connection Configuration
+
+The SDK automatically configures the Socket.IO connection with optimal settings:
+
+- **Transport**: WebSocket-only (polling disabled to prevent message duplication)
+- **Timeout**: 10 seconds to avoid frequent reconnections
+- **Reconnection**: Enabled with exponential backoff (100ms - 2000ms)
+- **Force New**: Ensures fresh connections to avoid state pollution
+
+These settings are optimized for reliability and are not currently configurable.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Build your first integration with the configured SDK
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api-reference">
+    Explore all available methods and modules
+  </Card>
+  
+  <Card title="Events" icon="bell" href="/events">
+    Learn about event handling and real-time updates
+  </Card>
+  
+  <Card title="Examples" icon="code" href="/examples">
+    See configuration in action with real examples
+  </Card>
+</CardGroup>

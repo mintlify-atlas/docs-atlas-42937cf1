@@ -1,0 +1,215 @@
+---
+title: editMessage
+description: Edit the content of a previously sent message
+---
+
+## Method Signature
+
+```typescript
+await sdk.messages.editMessage(options: {
+  messageGuid: string;
+  editedMessage: string;
+  backwardsCompatibilityMessage?: string;
+  partIndex?: number;
+}): Promise<MessageResponse>
+```
+
+Edits the text content of a previously sent message. This feature requires iOS 16+ / macOS Ventura+ and only works with iMessage (not SMS).
+
+<Warning>
+Message editing only works with iMessage chats. SMS messages cannot be edited.
+</Warning>
+
+## Parameters
+
+<ParamField path="messageGuid" type="string" required>
+  The unique identifier of the message to edit
+</ParamField>
+
+<ParamField path="editedMessage" type="string" required>
+  The new text content for the message
+</ParamField>
+
+<ParamField path="backwardsCompatibilityMessage" type="string">
+  Fallback message text for recipients on older iOS/macOS versions that don't support message editing.
+  
+  Defaults to `editedMessage` if not provided.
+  
+  <Note>
+  Recipients on iOS 15 or earlier will see the `backwardsCompatibilityMessage` instead of the edit.
+  </Note>
+</ParamField>
+
+<ParamField path="partIndex" type="number" default="0">
+  The part index for multi-part messages. Use `0` for single-part messages (most common).
+</ParamField>
+
+## Response
+
+Returns a `MessageResponse` object with the updated message data:
+
+<ResponseField name="guid" type="string">
+  The message GUID (unchanged)
+</ResponseField>
+
+<ResponseField name="text" type="string">
+  The edited message text
+</ResponseField>
+
+<ResponseField name="dateEdited" type="number | null">
+  Timestamp (milliseconds since epoch) when the message was last edited
+</ResponseField>
+
+<ResponseField name="dateCreated" type="number">
+  Original creation timestamp (unchanged)
+</ResponseField>
+
+<ResponseField name="isFromMe" type="boolean">
+  Whether the message was sent by you
+</ResponseField>
+
+## Examples
+
+### Basic Edit
+
+```typescript
+const editedMessage = await sdk.messages.editMessage({
+  messageGuid: "iMessage;-;user@example.com;12345",
+  editedMessage: "Updated message text"
+});
+
+console.log(`Message edited at: ${new Date(editedMessage.dateEdited!)}`);
+```
+
+### Edit with Backwards Compatibility
+
+```typescript
+const editedMessage = await sdk.messages.editMessage({
+  messageGuid: "iMessage;-;user@example.com;12345",
+  editedMessage: "Meeting is at 3pm",
+  backwardsCompatibilityMessage: "Meeting is at 3pm (edited)"
+});
+
+console.log("Message edited with fallback for older devices");
+```
+
+### Edit and Track Changes
+
+```typescript
+// First, get the original message
+const originalMessage = await sdk.messages.getMessage(
+  "iMessage;-;user@example.com;12345"
+);
+
+console.log(`Original: ${originalMessage.text}`);
+
+// Edit the message
+const editedMessage = await sdk.messages.editMessage({
+  messageGuid: originalMessage.guid,
+  editedMessage: "Corrected message text"
+});
+
+console.log(`Edited: ${editedMessage.text}`);
+console.log(`Edit time: ${new Date(editedMessage.dateEdited!).toLocaleString()}`);
+```
+
+### Fix a Typo
+
+```typescript
+// Send a message
+const message = await sdk.messages.sendMessage({
+  chatGuid: "iMessage;-;user@example.com",
+  message: "I'll be their at 5pm"  // Typo: "their" instead of "there"
+});
+
+// Immediately fix the typo
+await sdk.messages.editMessage({
+  messageGuid: message.guid,
+  editedMessage: "I'll be there at 5pm"
+});
+
+console.log("Typo corrected!");
+```
+
+### Conditional Edit Based on Age
+
+```typescript
+const message = await sdk.messages.getMessage(
+  "iMessage;-;user@example.com;12345"
+);
+
+const messageAge = Date.now() - message.dateCreated;
+const fifteenMinutes = 15 * 60 * 1000;
+
+if (messageAge < fifteenMinutes) {
+  await sdk.messages.editMessage({
+    messageGuid: message.guid,
+    editedMessage: "Updated information"
+  });
+  console.log("Message edited");
+} else {
+  console.log("Message too old, sending correction as new message");
+  await sdk.messages.sendMessage({
+    chatGuid: message.chats![0].guid,
+    message: "Correction: Updated information",
+    selectedMessageGuid: message.guid  // Reply to original
+  });
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const edited = await sdk.messages.editMessage({
+    messageGuid: "iMessage;-;user@example.com;12345",
+    editedMessage: "Corrected text"
+  });
+  console.log("Message edited successfully");
+} catch (error) {
+  if (error.response?.status === 400) {
+    console.error("Invalid message GUID or format");
+  } else if (error.response?.status === 404) {
+    console.error("Message not found");
+  } else if (error.response?.data?.message?.includes("not supported")) {
+    console.error("Editing not supported (SMS chat or old iOS version)");
+  } else {
+    console.error("Failed to edit message:", error.message);
+  }
+}
+```
+
+## Limitations
+
+<Note>
+  **Message editing has several limitations:**
+  
+  - Only works with iMessage (not SMS/MMS)
+  - Requires iOS 16+ / macOS Ventura+ for both sender and recipient
+  - You can only edit your own messages (`isFromMe: true`)
+  - Some message types (reactions, effects, etc.) cannot be edited
+  - Recipients on older versions see the `backwardsCompatibilityMessage`
+</Note>
+
+## Edit History
+
+Edited messages retain their original `guid` and `dateCreated` timestamp. The `dateEdited` field indicates when the last edit occurred. Currently, the SDK does not provide access to full edit history.
+
+```typescript
+const message = await sdk.messages.getMessage(
+  "iMessage;-;user@example.com;12345"
+);
+
+if (message.dateEdited) {
+  const timeSinceEdit = Date.now() - message.dateEdited;
+  console.log(`Message was edited ${Math.floor(timeSinceEdit / 1000)} seconds ago`);
+} else {
+  console.log("Message has never been edited");
+}
+```
+
+## Related Methods
+
+- [sendMessage](/api/messages/send-message) - Send a new message
+- [unsendMessage](/api/messages/unsend-message) - Unsend (retract) a message
+- [getMessage](/api/messages/get-messages#getmessage) - Get a message to check if it was edited

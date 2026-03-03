@@ -1,0 +1,288 @@
+---
+title: 'Statistics'
+description: 'Retrieve message, media, and server statistics'
+icon: 'chart-column'
+---
+
+## getMessageStats()
+
+Retrieves overall message statistics from the server.
+
+```typescript
+const stats = await sdk.server.getMessageStats();
+```
+
+### Returns
+
+<ResponseField name="stats" type="object">
+  Message statistics including totals, sent, and received counts
+  
+  <Expandable title="Message Statistics Object">
+    <ResponseField name="total" type="number">
+      Total number of messages in the database
+      
+      Example: `15420`
+    </ResponseField>
+    
+    <ResponseField name="sent" type="number">
+      Number of messages sent by you
+      
+      Example: `8234`
+    </ResponseField>
+    
+    <ResponseField name="received" type="number">
+      Number of messages received from others
+      
+      Example: `7186`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## getMediaStatistics()
+
+Retrieves statistics about media attachments across all chats.
+
+```typescript
+const mediaStats = await sdk.server.getMediaStatistics();
+```
+
+### Parameters
+
+<ParamField path="options" type="object" optional>
+  Options to filter the media statistics
+  
+  <Expandable title="Options">
+    <ParamField path="only" type="string[]" optional>
+      Array of MIME type prefixes to filter by
+      
+      Example: `["image", "video"]`
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="stats" type="object">
+  Media statistics aggregated across all conversations
+  
+  The structure varies based on the media types present. Common fields include counts and sizes for different media types.
+</ResponseField>
+
+### Example
+
+Get statistics only for images and videos:
+
+```typescript
+const imageVideoStats = await sdk.server.getMediaStatistics({
+  only: ['image', 'video']
+});
+```
+
+---
+
+## getMediaStatisticsByChat()
+
+Retrieves media statistics broken down by individual chat.
+
+```typescript
+const statsByChat = await sdk.server.getMediaStatisticsByChat();
+```
+
+### Parameters
+
+<ParamField path="options" type="object" optional>
+  Options to filter the media statistics
+  
+  <Expandable title="Options">
+    <ParamField path="only" type="string[]" optional>
+      Array of MIME type prefixes to filter by
+      
+      Example: `["image", "video"]`
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="stats" type="object">
+  Media statistics organized by chat GUID
+  
+  Each key is a chat GUID, and the value contains media statistics for that specific chat.
+</ResponseField>
+
+### Example
+
+Get per-chat statistics for documents only:
+
+```typescript
+const docStats = await sdk.server.getMediaStatisticsByChat({
+  only: ['application']
+});
+```
+
+---
+
+## getServerLogs()
+
+Retrieves recent server log entries.
+
+```typescript
+const logs = await sdk.server.getServerLogs(50);
+```
+
+### Parameters
+
+<ParamField path="count" type="number" optional>
+  Number of log entries to retrieve
+  
+  Default: Returns all available logs
+  
+  Example: `50`
+</ParamField>
+
+### Returns
+
+<ResponseField name="logs" type="string[]">
+  Array of log entry strings, ordered from most recent to oldest
+</ResponseField>
+
+---
+
+## Examples
+
+### Complete Server Statistics Overview
+
+Get and display all server statistics:
+
+```typescript
+import { AdvancedIMessageKit } from 'advanced-imessage-kit';
+
+const sdk = new AdvancedIMessageKit({
+  serverUrl: 'http://localhost:1234',
+  password: 'your-password'
+});
+
+await sdk.connect();
+
+// Message statistics
+const messageStats = await sdk.server.getMessageStats();
+console.log('Message Statistics');
+console.log('==================');
+console.log(`Total Messages: ${messageStats.total?.toLocaleString() || 'N/A'}`);
+console.log(`Sent: ${messageStats.sent?.toLocaleString() || 'N/A'}`);
+console.log(`Received: ${messageStats.received?.toLocaleString() || 'N/A'}`);
+
+if (messageStats.total && messageStats.total > 0) {
+  const sentPercentage = ((messageStats.sent / messageStats.total) * 100).toFixed(1);
+  console.log(`Sent: ${sentPercentage}% | Received: ${100 - sentPercentage}%`);
+}
+
+// Media statistics
+console.log('\nMedia Statistics');
+console.log('================');
+try {
+  const mediaStats = await sdk.server.getMediaStatistics();
+  console.log(JSON.stringify(mediaStats, null, 2));
+} catch (error) {
+  console.log('Media statistics not available');
+}
+
+// Recent logs
+console.log('\nRecent Server Logs');
+console.log('==================');
+try {
+  const logs = await sdk.server.getServerLogs(10);
+  if (logs && logs.length > 0) {
+    logs.forEach((log, i) => {
+      console.log(`${i + 1}. ${log}`);
+    });
+  } else {
+    console.log('No logs available');
+  }
+} catch (error) {
+  console.log('Logs not available');
+}
+```
+
+### Media Usage Analysis
+
+Analyze media storage by type:
+
+```typescript
+// Get all media statistics
+const allMedia = await sdk.server.getMediaStatistics();
+
+// Get only image statistics
+const imageStats = await sdk.server.getMediaStatistics({
+  only: ['image']
+});
+
+// Get only video statistics  
+const videoStats = await sdk.server.getMediaStatistics({
+  only: ['video']
+});
+
+console.log('Media Breakdown:');
+console.log(`Images: ${JSON.stringify(imageStats)}`);
+console.log(`Videos: ${JSON.stringify(videoStats)}`);
+```
+
+### Per-Chat Media Analysis
+
+Find chats with the most media:
+
+```typescript
+const mediaByChat = await sdk.server.getMediaStatisticsByChat({
+  only: ['image', 'video']
+});
+
+// Convert to array and sort by media count
+const chatStats = Object.entries(mediaByChat).map(([guid, stats]) => ({
+  guid,
+  stats
+}));
+
+// Display top 10 chats by media count
+console.log('Top 10 Chats by Media:');
+chatStats
+  .slice(0, 10)
+  .forEach(({ guid, stats }, i) => {
+    console.log(`${i + 1}. ${guid}:`, stats);
+  });
+```
+
+### Server Health Monitoring
+
+Monitor server logs for errors:
+
+```typescript
+// Get last 100 logs
+const logs = await sdk.server.getServerLogs(100);
+
+// Filter for errors or warnings
+const errors = logs.filter(log => 
+  log.toLowerCase().includes('error') || 
+  log.toLowerCase().includes('warning')
+);
+
+if (errors.length > 0) {
+  console.log(`⚠️  Found ${errors.length} errors/warnings:`);
+  errors.forEach(err => console.log(`  - ${err}`));
+} else {
+  console.log('✅ No errors found in recent logs');
+}
+```
+
+## Related Methods
+
+- `getServerInfo()` - Get server metadata and configuration
+
+<Note>
+  Statistics data is retrieved directly from the server's iMessage database and may take a moment to compute for large message histories.
+</Note>
+
+<Warning>
+  The `getServerLogs()` method may not be available on all BlueBubbles server versions. Always wrap calls in a try-catch block.
+</Warning>

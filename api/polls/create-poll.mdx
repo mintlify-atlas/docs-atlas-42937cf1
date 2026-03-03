@@ -1,0 +1,156 @@
+---
+title: "Create Poll"
+description: "Create an iMessage poll with multiple options"
+---
+
+## Method
+
+```typescript
+await sdk.polls.create(options: CreatePollOptions): Promise<PollMessageResponse>
+```
+
+Creates a new poll in an iMessage chat. Polls must have at least 2 options.
+
+## Parameters
+
+<ParamField path="options" type="CreatePollOptions" required>
+  Configuration for the poll
+  
+  <Expandable title="properties">
+    <ParamField path="chatGuid" type="string" required>
+      The chat GUID where the poll will be created
+    </ParamField>
+    
+    <ParamField path="title" type="string">
+      The poll question or title (optional, can be empty string)
+    </ParamField>
+    
+    <ParamField path="options" type="string[]" required>
+      Array of poll options (minimum 2 required)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="PollMessageResponse" type="MessageResponse">
+  The created poll message
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string">
+      Unique message GUID for the poll (use this for voting, unvoting, and adding options)
+    </ResponseField>
+    
+    <ResponseField name="balloonBundleId" type="string">
+      Bundle ID for polls: `"com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:com.apple.messages.Polls"`
+    </ResponseField>
+    
+    <ResponseField name="payloadData" type="NodeJS.Dict<any>[]">
+      Raw poll data containing the poll definition (parse with `parsePollDefinition()`)
+    </ResponseField>
+    
+    <ResponseField name="dateCreated" type="number">
+      Timestamp when the poll was created
+    </ResponseField>
+    
+    <ResponseField name="isFromMe" type="boolean">
+      Always `true` for created polls
+    </ResponseField>
+    
+    <ResponseField name="text" type="string">
+      Message text (usually empty for polls)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Basic Poll
+
+```typescript
+const poll = await sdk.polls.create({
+  chatGuid: "iMessage;-;+1234567890",
+  title: "What should we have for lunch?",
+  options: ["Pizza", "Tacos", "Sushi", "Burgers"],
+});
+
+console.log(`Poll created: ${poll.guid}`);
+```
+
+### Poll Without Title
+
+```typescript
+// Title is optional - you can create a poll with just options
+const poll = await sdk.polls.create({
+  chatGuid: "iMessage;-;+1234567890",
+  title: "",
+  options: ["Yes", "No", "Maybe"],
+});
+
+console.log(`Poll created: ${poll.guid}`);
+```
+
+### Create Poll and Parse Definition
+
+```typescript
+import { parsePollDefinition } from "advanced-imessage-kit";
+
+const poll = await sdk.polls.create({
+  chatGuid: "iMessage;-;+1234567890",
+  title: "Best programming language?",
+  options: ["TypeScript", "Python", "Go", "Rust"],
+});
+
+// Parse the poll to get option identifiers for voting
+const pollData = parsePollDefinition(poll);
+
+if (pollData) {
+  console.log(`Poll: ${pollData.title}`);
+  console.log(`Creator: ${pollData.creatorHandle}`);
+  console.log("Options:");
+  
+  pollData.options.forEach((option, index) => {
+    console.log(`  ${index + 1}. ${option.text} (ID: ${option.optionIdentifier})`);
+  });
+}
+```
+
+### Create Poll in Group Chat
+
+```typescript
+const groupPoll = await sdk.polls.create({
+  chatGuid: "iMessage;+;chat123456789",
+  title: "When should we meet?",
+  options: [
+    "Monday 2 PM",
+    "Tuesday 3 PM",
+    "Wednesday 4 PM",
+    "Thursday 2 PM",
+  ],
+});
+
+console.log(`Group poll created: ${groupPoll.guid}`);
+```
+
+## Error Handling
+
+```typescript
+try {
+  const poll = await sdk.polls.create({
+    chatGuid: "iMessage;-;+1234567890",
+    title: "Valid poll?",
+    options: ["Only one option"], // ERROR: Less than 2 options
+  });
+} catch (error) {
+  console.error(error.message); // "Poll must have at least 2 options"
+}
+```
+
+## Notes
+
+- Polls require at least 2 options (enforced by the SDK)
+- The `title` field is optional and can be an empty string
+- Save the returned `poll.guid` to interact with the poll later (voting, adding options, etc.)
+- Use `parsePollDefinition()` to extract poll details including option identifiers needed for voting
+- Poll options cannot be removed after creation, but new options can be added with `addOption()`
+- The creator's handle is automatically included in the poll data

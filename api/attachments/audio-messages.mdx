@@ -1,0 +1,215 @@
+---
+title: "Audio Messages"
+description: "Send audio messages with special iMessage formatting"
+---
+
+## Overview
+
+Audio messages are a special type of attachment in iMessage that display with a waveform visualization and inline playback controls. They differ from regular audio file attachments.
+
+<Note>
+  Audio messages require the Private API to be enabled on your BlueBubbles server.
+</Note>
+
+## Sending Audio Messages
+
+Use the `sendAttachment()` method with the `isAudioMessage` flag set to `true`.
+
+```typescript
+const message = await client.attachment.sendAttachment({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/path/to/audio.caf",
+  isAudioMessage: true
+});
+```
+
+## Parameters
+
+<ParamField path="options" type="SendAttachmentOptions" required>
+  Configuration object for sending the audio message
+  
+  <Expandable title="SendAttachmentOptions">
+    <ParamField path="chatGuid" type="string" required>
+      The GUID of the chat to send the audio message to
+    </ParamField>
+    
+    <ParamField path="filePath" type="string" required>
+      Absolute path to the audio file (typically `.caf` format)
+    </ParamField>
+    
+    <ParamField path="isAudioMessage" type="boolean" required>
+      Must be set to `true` to send as an audio message
+    </ParamField>
+    
+    <ParamField path="fileName" type="string">
+      Optional custom filename. If not provided, uses the basename of `filePath`
+    </ParamField>
+    
+    <ParamField path="selectedMessageGuid" type="string">
+      GUID of a message to reply to. When set, the audio message will be sent as a reply
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Audio Format
+
+iMessage audio messages typically use the Core Audio Format (`.caf`) with the following specifications:
+
+- **Format**: CAF (Core Audio Format)
+- **Codec**: Opus or AAC
+- **Sample Rate**: 16 kHz or 48 kHz
+- **Channels**: 1 (mono)
+- **Bit Rate**: Variable
+
+While iMessage accepts other audio formats, `.caf` is recommended for best compatibility.
+
+## Examples
+
+### Basic Audio Message
+
+```typescript
+const message = await client.attachment.sendAttachment({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/recordings/voice-memo.caf",
+  isAudioMessage: true
+});
+
+console.log(`Audio message sent: ${message.guid}`);
+```
+
+### Audio Message as Reply
+
+```typescript
+const message = await client.attachment.sendAttachment({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/recordings/response.caf",
+  isAudioMessage: true,
+  selectedMessageGuid: "original-message-guid"
+});
+```
+
+### Recording and Sending
+
+Here's a complete example using the `node-record-lpcm16` package to record audio:
+
+```typescript
+import recorder from 'node-record-lpcm16';
+import fs from 'fs/promises';
+import path from 'path';
+
+// Record audio
+const recording = recorder.record({
+  sampleRate: 16000,
+  channels: 1,
+  audioType: 'caf'
+});
+
+const outputPath = '/tmp/recording.caf';
+const fileStream = fs.createWriteStream(outputPath);
+
+recording.stream().pipe(fileStream);
+
+// Record for 5 seconds
+setTimeout(() => {
+  recording.stop();
+}, 5000);
+
+fileStream.on('close', async () => {
+  // Send the recorded audio message
+  const message = await client.attachment.sendAttachment({
+    chatGuid: "iMessage;+;chat123456",
+    filePath: outputPath,
+    isAudioMessage: true
+  });
+  
+  console.log('Audio message sent!');
+  
+  // Clean up
+  await fs.unlink(outputPath);
+});
+```
+
+### Converting Audio Format
+
+If you have audio in a different format, convert it to CAF using FFmpeg:
+
+```typescript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+async function convertToCAF(inputPath: string, outputPath: string) {
+  const command = `ffmpeg -i "${inputPath}" -ar 16000 -ac 1 -c:a libopus "${outputPath}"`;
+  await execAsync(command);
+}
+
+// Convert and send
+const inputFile = '/path/to/audio.mp3';
+const cafFile = '/tmp/converted.caf';
+
+await convertToCAF(inputFile, cafFile);
+
+const message = await client.attachment.sendAttachment({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: cafFile,
+  isAudioMessage: true
+});
+
+await fs.unlink(cafFile);
+```
+
+## Audio Messages vs. Audio Files
+
+| Feature | Audio Message (`isAudioMessage: true`) | Regular Audio Attachment |
+|---------|---------------------------------------|-------------------------|
+| Display | Waveform with inline player | File attachment icon |
+| Controls | Play/pause in conversation | Download to play |
+| Auto-delete | May expire after 2 minutes (recipient setting) | Permanent |
+| Private API | Required | Not required |
+| Format | Typically CAF | Any audio format |
+
+### Sending Regular Audio File
+
+To send an audio file as a regular attachment (not an audio message):
+
+```typescript
+const message = await client.attachment.sendAttachment({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/path/to/song.mp3",
+  // Note: isAudioMessage is omitted or set to false
+});
+```
+
+## Behavior
+
+- When `isAudioMessage` is `true`, the attachment is sent using the Private API
+- Audio messages display with a waveform visualization in iMessage
+- Recipients can play audio messages inline without downloading
+- Depending on recipient settings, audio messages may auto-delete after being played
+- If the chat doesn't exist, it will be created automatically
+
+## Error Handling
+
+```typescript
+try {
+  const message = await client.attachment.sendAttachment({
+    chatGuid: "iMessage;+;chat123456",
+    filePath: "/path/to/audio.caf",
+    isAudioMessage: true
+  });
+} catch (error) {
+  if (error.response?.status === 400) {
+    console.error('Private API may not be enabled');
+  } else if (error.code === 'ENOENT') {
+    console.error('Audio file not found');
+  } else {
+    console.error('Failed to send audio message:', error);
+  }
+}
+```
+
+## See Also
+
+- [Send Attachment](/api/attachments/send-attachment) - Sending file attachments
+- [Private API Setup](/configuration) - Enabling Private API features

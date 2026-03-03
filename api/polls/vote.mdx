@@ -1,0 +1,303 @@
+---
+title: "Vote, Unvote, Add Option"
+description: "Cast votes, remove votes, and add new options to existing polls"
+---
+
+## Vote on Poll
+
+```typescript
+await sdk.polls.vote(options: VotePollOptions): Promise<PollMessageResponse>
+```
+
+Casts a vote for a specific option in a poll.
+
+### Parameters
+
+<ParamField path="options" type="VotePollOptions" required>
+  Vote configuration
+  
+  <Expandable title="properties">
+    <ParamField path="chatGuid" type="string" required>
+      The chat GUID where the poll exists
+    </ParamField>
+    
+    <ParamField path="pollMessageGuid" type="string" required>
+      The GUID of the poll message (from the original poll creation)
+    </ParamField>
+    
+    <ParamField path="optionIdentifier" type="string" required>
+      The unique identifier for the poll option to vote for (obtain from `parsePollDefinition()`)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="PollMessageResponse" type="MessageResponse">
+  The vote message
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string">
+      Unique message GUID for the vote
+    </ResponseField>
+    
+    <ResponseField name="associatedMessageGuid" type="string">
+      The GUID of the original poll message
+    </ResponseField>
+    
+    <ResponseField name="associatedMessageType" type="string">
+      Set to `"4000"` for poll votes
+    </ResponseField>
+    
+    <ResponseField name="payloadData" type="NodeJS.Dict<any>[]">
+      Raw vote data (parse with `parsePollVotes()`)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+import { parsePollDefinition } from "advanced-imessage-kit";
+
+// Create a poll
+const poll = await sdk.polls.create({
+  chatGuid: "iMessage;-;+1234567890",
+  title: "Vote test",
+  options: ["Option A", "Option B", "Option C"],
+});
+
+const pollMessageGuid = poll.guid;
+
+// Parse to get option identifiers
+const pollData = parsePollDefinition(poll);
+const optionIdentifier = pollData?.options[0]?.optionIdentifier;
+
+// Vote for the first option
+const vote = await sdk.polls.vote({
+  chatGuid: "iMessage;-;+1234567890",
+  pollMessageGuid,
+  optionIdentifier,
+});
+
+console.log(`Voted: ${vote.guid}`);
+```
+
+---
+
+## Unvote from Poll
+
+```typescript
+await sdk.polls.unvote(options: VotePollOptions): Promise<PollMessageResponse>
+```
+
+Removes a vote from a specific poll option.
+
+### Parameters
+
+<ParamField path="options" type="VotePollOptions" required>
+  Unvote configuration (same structure as vote)
+  
+  <Expandable title="properties">
+    <ParamField path="chatGuid" type="string" required>
+      The chat GUID where the poll exists
+    </ParamField>
+    
+    <ParamField path="pollMessageGuid" type="string" required>
+      The GUID of the poll message
+    </ParamField>
+    
+    <ParamField path="optionIdentifier" type="string" required>
+      The unique identifier for the poll option to unvote from
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="PollMessageResponse" type="MessageResponse">
+  The unvote message
+</ResponseField>
+
+### Example
+
+```typescript
+// Vote for an option
+const vote = await sdk.polls.vote({
+  chatGuid: "iMessage;-;+1234567890",
+  pollMessageGuid: "poll-guid-123",
+  optionIdentifier: "option-id-abc",
+});
+
+console.log(`Voted: ${vote.guid}`);
+
+// Wait a bit
+await new Promise(resolve => setTimeout(resolve, 3000));
+
+// Remove the vote
+const unvote = await sdk.polls.unvote({
+  chatGuid: "iMessage;-;+1234567890",
+  pollMessageGuid: "poll-guid-123",
+  optionIdentifier: "option-id-abc",
+});
+
+console.log(`Unvoted: ${unvote.guid}`);
+```
+
+---
+
+## Add Option to Poll
+
+```typescript
+await sdk.polls.addOption(options: AddPollOptionOptions): Promise<PollMessageResponse>
+```
+
+Adds a new option to an existing poll.
+
+### Parameters
+
+<ParamField path="options" type="AddPollOptionOptions" required>
+  Configuration for adding an option
+  
+  <Expandable title="properties">
+    <ParamField path="chatGuid" type="string" required>
+      The chat GUID where the poll exists
+    </ParamField>
+    
+    <ParamField path="pollMessageGuid" type="string" required>
+      The GUID of the poll message to add an option to
+    </ParamField>
+    
+    <ParamField path="optionText" type="string" required>
+      The text for the new option (cannot be empty)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="PollMessageResponse" type="MessageResponse">
+  The message representing the added option
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string">
+      Unique message GUID for the edit
+    </ResponseField>
+    
+    <ResponseField name="associatedMessageType" type="string">
+      Association type indicating this is a poll edit
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+// Create a poll with 2 options
+const poll = await sdk.polls.create({
+  chatGuid: "iMessage;-;+1234567890",
+  title: "Expandable poll",
+  options: ["Option A", "Option B"],
+});
+
+console.log(`Poll created: ${poll.guid}`);
+
+// Wait for poll to be fully created
+await new Promise(resolve => setTimeout(resolve, 2000));
+
+// Add a third option
+const editMessage = await sdk.polls.addOption({
+  chatGuid: "iMessage;-;+1234567890",
+  pollMessageGuid: poll.guid,
+  optionText: "Option C - Added Later",
+});
+
+console.log(`Option added: ${editMessage.guid}`);
+```
+
+---
+
+## Complete Example
+
+```typescript
+import { iMessageSDK, parsePollDefinition } from "advanced-imessage-kit";
+
+const sdk = new iMessageSDK({ serverUrl: "http://localhost:3000" });
+const chatGuid = "iMessage;-;+1234567890";
+
+sdk.on("ready", async () => {
+  // Create poll
+  const poll = await sdk.polls.create({
+    chatGuid,
+    title: "What's your favorite?",
+    options: ["Coffee", "Tea"],
+  });
+  
+  console.log(`Poll created: ${poll.guid}`);
+  
+  // Parse poll to get option identifiers
+  const pollData = parsePollDefinition(poll);
+  const coffeeOption = pollData?.options.find(o => o.text === "Coffee");
+  
+  if (!coffeeOption) {
+    throw new Error("Coffee option not found");
+  }
+  
+  // Wait for poll to be created
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  // Vote for coffee
+  await sdk.polls.vote({
+    chatGuid,
+    pollMessageGuid: poll.guid,
+    optionIdentifier: coffeeOption.optionIdentifier,
+  });
+  
+  console.log("Voted for coffee");
+  
+  // Add a new option
+  await sdk.polls.addOption({
+    chatGuid,
+    pollMessageGuid: poll.guid,
+    optionText: "Hot Chocolate",
+  });
+  
+  console.log("Added new option");
+  
+  // Unvote after 3 seconds
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  
+  await sdk.polls.unvote({
+    chatGuid,
+    pollMessageGuid: poll.guid,
+    optionIdentifier: coffeeOption.optionIdentifier,
+  });
+  
+  console.log("Unvoted");
+});
+
+await sdk.connect();
+```
+
+## Error Handling
+
+```typescript
+try {
+  await sdk.polls.addOption({
+    chatGuid: "iMessage;-;+1234567890",
+    pollMessageGuid: "poll-guid-123",
+    optionText: "", // ERROR: Empty text
+  });
+} catch (error) {
+  console.error(error.message); // "Option text cannot be empty"
+}
+```
+
+## Notes
+
+- You can vote for multiple options in a poll (iMessage supports multiple selections)
+- `unvote()` only removes the vote for the specified option, not all votes
+- Option identifiers are unique strings generated by iMessage - always parse them from the poll definition
+- Adding options requires a brief delay after poll creation (usually 1-2 seconds)
+- Empty option text is not allowed when adding options
+- The poll creator and other participants can add new options

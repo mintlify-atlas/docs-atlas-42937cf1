@@ -1,0 +1,380 @@
+---
+title: 'Group Chat Management'
+description: 'List, monitor, and manage iMessage group conversations'
+icon: 'users'
+---
+
+## Overview
+
+Manage iMessage group chats including listing groups, monitoring participant changes, and tracking group events like name changes and icon updates.
+
+## Listing Group Chats
+
+Retrieve all group chats and display their information:
+
+```typescript
+import { createSDK, handleError, handleExit } from "./utils";
+
+async function main() {
+    const sdk = createSDK();
+
+    sdk.on("ready", async () => {
+        try {
+            const allChats = await sdk.chats.getChats();
+
+            // list all group chats
+            // style 43 = group chat, style 45 = 1-on-1 chat
+            const groups = allChats.filter((chat) => "style" in chat && chat.style === 43);
+
+            console.log(`got ${groups.length} groups\n`);
+
+            groups.forEach((group, i) => {
+                console.log(`${i + 1}. ${group.displayName || group.chatIdentifier}`);
+                console.log(`   guid: ${group.guid}`);
+                console.log(`   people: ${group.participants?.length || 0}`);
+
+                if (group.participants?.length) {
+                    group.participants.slice(0, 3).forEach((p) => {
+                        console.log(`     ${p.address}`);
+                    });
+                    if (group.participants.length > 3) {
+                        console.log(`     ... and ${group.participants.length - 3} more`);
+                    }
+                }
+                console.log();
+            });
+        } catch (error) {
+            handleError(error, "Failed to fetch groups");
+        }
+    });
+
+    await sdk.connect();
+    handleExit(sdk);
+}
+
+main().catch(console.error);
+```
+
+## Understanding Chat Styles
+
+<ParamField path="style" type="number">
+  - **43** = Group chat (3+ participants)
+  - **45** = 1-on-1 direct message
+</ParamField>
+
+## Monitoring Group Events
+
+Listen for group-related events in real-time:
+
+```typescript
+import { createSDK, handleError, handleExit } from "./utils";
+
+async function main() {
+    const sdk = createSDK();
+
+    const logEvent = (eventName: string, data: any) => {
+        const chatName = data?.displayName || data?.guid || "Unknown";
+        console.log(`\n${eventName}: ${chatName}`);
+        if (data?.groupTitle) {
+            console.log(`  name changed to: ${data.groupTitle}`);
+        }
+    };
+
+    sdk.on("group-name-change", (data) => logEvent("name change", data));
+    sdk.on("participant-added", (data) => logEvent("added", data));
+    sdk.on("participant-removed", (data) => logEvent("removed", data));
+    sdk.on("participant-left", (data) => logEvent("left", data));
+    sdk.on("group-icon-changed", (data) => logEvent("icon changed", data));
+    sdk.on("group-icon-removed", (data) => logEvent("icon removed", data));
+
+    sdk.on("ready", async () => {
+        try {
+            const allChats = await sdk.chats.getChats();
+            const groups = allChats.filter((chat) => "style" in chat && chat.style === 43);
+
+            console.log(`got ${groups.length} groups\n`);
+
+            groups.forEach((group, i) => {
+                console.log(`${i + 1}. ${group.displayName || group.chatIdentifier}`);
+                console.log(`   guid: ${group.guid}`);
+                console.log(`   people: ${group.participants?.length || 0}`);
+
+                if (group.participants?.length) {
+                    group.participants.slice(0, 3).forEach((p) => {
+                        console.log(`     ${p.address}`);
+                    });
+                    if (group.participants.length > 3) {
+                        console.log(`     ... and ${group.participants.length - 3} more`);
+                    }
+                }
+                console.log();
+            });
+
+            console.log("\nwatching for group changes...");
+        } catch (error) {
+            handleError(error, "Failed to fetch groups");
+        }
+    });
+
+    await sdk.connect();
+    handleExit(sdk);
+}
+
+main().catch(console.error);
+```
+
+## Group Events
+
+<AccordionGroup>
+  <Accordion title="group-name-change">
+    Triggered when someone changes the group name:
+    ```typescript
+    sdk.on("group-name-change", (data) => {
+        console.log(`Group renamed to: ${data.groupTitle}`);
+        console.log(`Chat GUID: ${data.guid}`);
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="participant-added">
+    Triggered when a participant is added to the group:
+    ```typescript
+    sdk.on("participant-added", (data) => {
+        console.log(`New participant added to: ${data.displayName}`);
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="participant-removed">
+    Triggered when someone is removed from the group:
+    ```typescript
+    sdk.on("participant-removed", (data) => {
+        console.log(`Participant removed from: ${data.displayName}`);
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="participant-left">
+    Triggered when someone leaves the group voluntarily:
+    ```typescript
+    sdk.on("participant-left", (data) => {
+        console.log(`Participant left: ${data.displayName}`);
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="group-icon-changed">
+    Triggered when the group icon/photo is changed:
+    ```typescript
+    sdk.on("group-icon-changed", (data) => {
+        console.log(`Icon changed for: ${data.displayName}`);
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="group-icon-removed">
+    Triggered when the group icon is removed:
+    ```typescript
+    sdk.on("group-icon-removed", (data) => {
+        console.log(`Icon removed from: ${data.displayName}`);
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Finding Specific Groups
+
+### By Name
+
+```typescript
+const allChats = await sdk.chats.getChats();
+const groups = allChats.filter(chat => 
+    chat.style === 43 && 
+    chat.displayName?.includes("Family")
+);
+```
+
+### By Participant Count
+
+```typescript
+const allChats = await sdk.chats.getChats();
+const largeGroups = allChats.filter(chat => 
+    chat.style === 43 && 
+    (chat.participants?.length || 0) > 10
+);
+```
+
+### By Participant
+
+```typescript
+const allChats = await sdk.chats.getChats();
+const groupsWithUser = allChats.filter(chat => 
+    chat.style === 43 && 
+    chat.participants?.some(p => p.address === "+1234567890")
+);
+```
+
+## Group Chat Information
+
+Each group chat object contains:
+
+```typescript
+{
+    guid: string;              // Unique identifier
+    chatIdentifier: string;    // Chat ID
+    displayName: string;       // Group name
+    style: 43;                 // Group chat indicator
+    participants: [            // Array of participants
+        {
+            address: string;   // Phone number or email
+            // ... other participant data
+        }
+    ],
+    // ... other properties
+}
+```
+
+## Advanced Examples
+
+### Group Activity Monitor
+
+```typescript
+const groupStats = new Map();
+
+sdk.on("new-message", (message) => {
+    const chat = message.chats?.[0];
+    if (!chat || chat.style !== 43) return; // Only track groups
+
+    const guid = chat.guid;
+    const stats = groupStats.get(guid) || { messages: 0, lastActive: 0 };
+    
+    stats.messages++;
+    stats.lastActive = Date.now();
+    groupStats.set(guid, stats);
+
+    console.log(`${chat.displayName}: ${stats.messages} messages`);
+});
+
+// Show stats every hour
+setInterval(() => {
+    console.log("\n--- Group Activity Stats ---");
+    for (const [guid, stats] of groupStats.entries()) {
+        console.log(`${guid}: ${stats.messages} messages`);
+    }
+}, 3600000);
+```
+
+### Group Moderator Bot
+
+```typescript
+const ADMIN_NUMBERS = ["+1234567890"];
+
+sdk.on("participant-added", async (data) => {
+    // Welcome new members
+    await sdk.messages.sendMessage({
+        chatGuid: data.guid,
+        message: "Welcome to the group! Please read the rules.",
+    });
+});
+
+sdk.on("new-message", async (message) => {
+    const chat = message.chats?.[0];
+    if (!chat || chat.style !== 43) return;
+
+    const sender = message.handle?.address;
+    const text = message.text?.toLowerCase() || "";
+
+    // Moderate spam
+    if (text.includes("spam") && !ADMIN_NUMBERS.includes(sender || "")) {
+        await sdk.messages.sendMessage({
+            chatGuid: chat.guid,
+            message: "Please avoid spam in this group.",
+        });
+    }
+});
+```
+
+### Group Statistics Reporter
+
+```typescript
+sdk.on("new-message", async (message) => {
+    const chat = message.chats?.[0];
+    if (!chat || chat.style !== 43) return;
+
+    const text = message.text?.toLowerCase() || "";
+
+    if (text === "!stats") {
+        const participantCount = chat.participants?.length || 0;
+        const groupName = chat.displayName || "this group";
+
+        await sdk.messages.sendMessage({
+            chatGuid: chat.guid,
+            message: `${groupName} has ${participantCount} members`,
+        });
+    }
+});
+```
+
+## Sending to Groups
+
+Send a message to a group chat:
+
+```typescript
+const groups = allChats.filter(chat => chat.style === 43);
+const familyGroup = groups.find(g => g.displayName?.includes("Family"));
+
+if (familyGroup) {
+    await sdk.messages.sendMessage({
+        chatGuid: familyGroup.guid,
+        message: "Hello everyone!",
+    });
+}
+```
+
+## Best Practices
+
+<Warning>
+  **Respect Privacy**: Be careful when accessing group information. Only monitor groups where you have permission.
+</Warning>
+
+<Tip>
+  Cache group information to reduce API calls:
+  ```typescript
+  const groupCache = new Map();
+  
+  async function getGroup(guid: string) {
+      if (!groupCache.has(guid)) {
+          const chats = await sdk.chats.getChats();
+          const group = chats.find(c => c.guid === guid);
+          if (group) groupCache.set(guid, group);
+      }
+      return groupCache.get(guid);
+  }
+  ```
+</Tip>
+
+<Note>
+  Group events require the SDK to be connected and listening. Make sure to use `handleExit(sdk)` to keep the connection alive.
+</Note>
+
+## Filtering Direct Messages
+
+To get only 1-on-1 chats (not groups):
+
+```typescript
+const allChats = await sdk.chats.getChats();
+const directMessages = allChats.filter(chat => 
+    "style" in chat && chat.style === 45
+);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Basic Usage" icon="rocket" href="/examples/basic-usage">
+    Send messages to groups
+  </Card>
+  <Card title="Auto-Reply Bot" icon="robot" href="/examples/auto-reply-bot">
+    Respond to group messages
+  </Card>
+</CardGroup>

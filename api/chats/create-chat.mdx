@@ -1,0 +1,150 @@
+---
+title: "Create Chat"
+description: "Create new chat conversations"
+---
+
+## createChat
+
+Create a new chat conversation with one or more participants.
+
+```typescript
+await client.chat.createChat(options): Promise<ChatResponse>
+```
+
+### Parameters
+
+<ParamField path="options" type="object" required>
+  Configuration for creating the chat
+  
+  <ParamField path="addresses" type="string[]" required>
+    Array of participant addresses (phone numbers or email addresses)
+  </ParamField>
+  
+  <ParamField path="message" type="string" optional>
+    Initial message to send when creating the chat
+  </ParamField>
+  
+  <ParamField path="method" type="'apple-script' | 'private-api'" optional>
+    Method to use for creating the chat
+  </ParamField>
+  
+  <ParamField path="service" type="'iMessage' | 'SMS'" optional>
+    Service to use for the chat (defaults to iMessage)
+  </ParamField>
+  
+  <ParamField path="tempGuid" type="string" optional>
+    Temporary GUID for the chat
+  </ParamField>
+  
+  <ParamField path="subject" type="string" optional>
+    Subject line for the chat (group chats only)
+  </ParamField>
+  
+  <ParamField path="effectId" type="string" optional>
+    Message effect ID for the initial message
+  </ParamField>
+  
+  <ParamField path="attributedBody" type="Record<string, unknown>" optional>
+    Attributed body data for rich text formatting
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="chat" type="ChatResponse">
+  The newly created chat object
+  
+  <ResponseField name="originalROWID" type="number">
+    Database row ID
+  </ResponseField>
+  
+  <ResponseField name="guid" type="string">
+    Unique identifier for the chat
+  </ResponseField>
+  
+  <ResponseField name="chatIdentifier" type="string">
+    Chat identifier string
+  </ResponseField>
+  
+  <ResponseField name="displayName" type="string">
+    Display name of the chat
+  </ResponseField>
+  
+  <ResponseField name="style" type="number">
+    Chat style (0 = individual, 43 = group)
+  </ResponseField>
+  
+  <ResponseField name="isArchived" type="boolean">
+    Whether the chat is archived
+  </ResponseField>
+  
+  <ResponseField name="isFiltered" type="boolean" optional>
+    Whether the chat is filtered
+  </ResponseField>
+  
+  <ResponseField name="groupId" type="string" optional>
+    Group identifier for group chats
+  </ResponseField>
+  
+  <ResponseField name="participants" type="HandleResponse[]" optional>
+    Array of participant handles
+  </ResponseField>
+  
+  <ResponseField name="lastMessage" type="MessageResponse" optional>
+    Most recent message in the chat
+  </ResponseField>
+  
+  <ResponseField name="lastAddressedHandle" type="string | null" optional>
+    Last addressed handle in the chat
+  </ResponseField>
+  
+  <ResponseField name="properties" type="object[] | null" optional>
+    Additional chat properties
+  </ResponseField>
+</ResponseField>
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+// Create a 1-on-1 chat with initial message
+const individualChat = await client.chat.createChat({
+  addresses: ['+1234567890'],
+  message: 'Hey! How are you?'
+});
+
+console.log(`Created chat: ${individualChat.guid}`);
+
+// Create a group chat
+const groupChat = await client.chat.createChat({
+  addresses: ['+1234567890', '+0987654321', 'friend@icloud.com'],
+  message: 'Welcome to the group!',
+  subject: 'Weekend Plans'
+});
+
+console.log(`Created group: ${groupChat.displayName}`);
+
+// Create chat with SMS service
+const smsChat = await client.chat.createChat({
+  addresses: ['+1234567890'],
+  service: 'SMS',
+  message: 'Sending via SMS'
+});
+
+// Create chat with message effect
+const chatWithEffect = await client.chat.createChat({
+  addresses: ['+1234567890'],
+  message: 'Happy Birthday!',
+  effectId: 'com.apple.messages.effect.CKConfettiEffect'
+});
+
+// Create chat using private API
+const privateApiChat = await client.chat.createChat({
+  addresses: ['+1234567890'],
+  message: 'Hello!',
+  method: 'private-api'
+});
+```

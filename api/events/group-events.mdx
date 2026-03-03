@@ -1,0 +1,463 @@
+---
+title: 'Group Events'
+description: 'Events related to group chat changes and participant management'
+icon: 'users'
+---
+
+## Overview
+
+Group events are emitted when changes occur in group chats, such as name changes, participant modifications, and group icon updates. All group events provide a `MessageResponse` object that contains information about the change.
+
+## Events
+
+### group-name-change
+
+Emitted when a group chat's name is changed.
+
+<ResponseField name="data" type="MessageResponse">
+  Message object containing the group name change information
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string" required>
+      Unique identifier for this system message
+    </ResponseField>
+    
+    <ResponseField name="groupTitle" type="string | null" required>
+      The new name of the group chat
+    </ResponseField>
+    
+    <ResponseField name="groupActionType" type="number" required>
+      Action type code indicating a name change
+    </ResponseField>
+    
+    <ResponseField name="isFromMe" type="boolean" required>
+      Whether you changed the group name
+    </ResponseField>
+    
+    <ResponseField name="handle" type="HandleResponse | null">
+      The user who changed the group name
+    </ResponseField>
+    
+    <ResponseField name="chats" type="ChatResponse[]">
+      Array containing the affected group chat
+    </ResponseField>
+    
+    <ResponseField name="dateCreated" type="number" required>
+      Unix timestamp when the change occurred
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Basic Usage
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('group-name-change', (message) => {
+  const changer = message.isFromMe ? 'You' : message.handle?.id;
+  console.log(`${changer} changed group name to: ${message.groupTitle}`);
+});
+
+await client.connect();
+```
+
+```typescript Track Group Changes
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('group-name-change', (message) => {
+  const chatGuid = message.chats?.[0]?.guid;
+  const newName = message.groupTitle || '(No name)';
+  const timestamp = new Date(message.dateCreated).toLocaleString();
+  
+  console.log(`Group Chat: ${chatGuid}`);
+  console.log(`New Name: ${newName}`);
+  console.log(`Changed at: ${timestamp}`);
+  console.log(`Changed by: ${message.handle?.id || 'Unknown'}`);
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+---
+
+### participant-added
+
+Emitted when a participant is added to a group chat.
+
+<ResponseField name="data" type="MessageResponse">
+  Message object containing the participant addition information
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string" required>
+      Unique identifier for this system message
+    </ResponseField>
+    
+    <ResponseField name="groupActionType" type="number" required>
+      Action type code indicating a participant was added
+    </ResponseField>
+    
+    <ResponseField name="isFromMe" type="boolean" required>
+      Whether you added the participant
+    </ResponseField>
+    
+    <ResponseField name="handle" type="HandleResponse | null">
+      The user who was added to the group
+    </ResponseField>
+    
+    <ResponseField name="chats" type="ChatResponse[]">
+      Array containing the affected group chat
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Basic Usage
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('participant-added', (message) => {
+  const added = message.handle?.id || 'Unknown';
+  console.log(`${added} was added to the group`);
+});
+
+await client.connect();
+```
+
+```typescript Welcome New Members
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('participant-added', async (message) => {
+  // Don't send welcome if we were the one added
+  if (message.isFromMe) return;
+  
+  const chatGuid = message.chats?.[0]?.guid;
+  if (!chatGuid) return;
+  
+  const newMember = message.handle?.id || 'New member';
+  
+  await client.messages.send({
+    chatGuid,
+    message: `Welcome to the group, ${newMember}! 👋`
+  });
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+---
+
+### participant-removed
+
+Emitted when a participant is removed from a group chat by another user.
+
+<ResponseField name="data" type="MessageResponse">
+  Message object containing the participant removal information
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string" required>
+      Unique identifier for this system message
+    </ResponseField>
+    
+    <ResponseField name="groupActionType" type="number" required>
+      Action type code indicating a participant was removed
+    </ResponseField>
+    
+    <ResponseField name="handle" type="HandleResponse | null">
+      The user who was removed from the group
+    </ResponseField>
+    
+    <ResponseField name="chats" type="ChatResponse[]">
+      Array containing the affected group chat
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Basic Usage
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('participant-removed', (message) => {
+  const removed = message.handle?.id || 'Unknown';
+  console.log(`${removed} was removed from the group`);
+});
+
+await client.connect();
+```
+
+```typescript Track Removals
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('participant-removed', (message) => {
+  const chatGuid = message.chats?.[0]?.guid;
+  const removed = message.handle?.id || 'Unknown';
+  const timestamp = new Date(message.dateCreated).toLocaleString();
+  
+  console.log(`Participant removed from ${chatGuid}`);
+  console.log(`Removed: ${removed}`);
+  console.log(`Time: ${timestamp}`);
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+---
+
+### participant-left
+
+Emitted when a participant voluntarily leaves a group chat.
+
+<ResponseField name="data" type="MessageResponse">
+  Message object containing the participant departure information
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string" required>
+      Unique identifier for this system message
+    </ResponseField>
+    
+    <ResponseField name="groupActionType" type="number" required>
+      Action type code indicating a participant left
+    </ResponseField>
+    
+    <ResponseField name="handle" type="HandleResponse | null">
+      The user who left the group
+    </ResponseField>
+    
+    <ResponseField name="chats" type="ChatResponse[]">
+      Array containing the affected group chat
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Basic Usage
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('participant-left', (message) => {
+  const left = message.handle?.id || 'Unknown';
+  console.log(`${left} left the group`);
+});
+
+await client.connect();
+```
+
+```typescript Differentiate Leave vs Remove
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('participant-left', (message) => {
+  console.log(`${message.handle?.id} voluntarily left the group`);
+});
+
+client.on('participant-removed', (message) => {
+  console.log(`${message.handle?.id} was removed from the group`);
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+---
+
+### group-icon-changed
+
+Emitted when a group chat's icon/photo is changed.
+
+<ResponseField name="data" type="MessageResponse">
+  Message object containing the group icon change information
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string" required>
+      Unique identifier for this system message
+    </ResponseField>
+    
+    <ResponseField name="groupActionType" type="number" required>
+      Action type code indicating icon was changed
+    </ResponseField>
+    
+    <ResponseField name="isFromMe" type="boolean" required>
+      Whether you changed the group icon
+    </ResponseField>
+    
+    <ResponseField name="handle" type="HandleResponse | null">
+      The user who changed the group icon
+    </ResponseField>
+    
+    <ResponseField name="attachments" type="AttachmentResponse[]">
+      Array containing the new group icon image
+    </ResponseField>
+    
+    <ResponseField name="chats" type="ChatResponse[]">
+      Array containing the affected group chat
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Basic Usage
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('group-icon-changed', (message) => {
+  const changer = message.isFromMe ? 'You' : message.handle?.id;
+  console.log(`${changer} changed the group icon`);
+  
+  if (message.attachments && message.attachments.length > 0) {
+    console.log(`New icon: ${message.attachments[0].guid}`);
+  }
+});
+
+await client.connect();
+```
+
+```typescript Download New Icon
+import { SDK } from 'advanced-imessage';
+import fs from 'fs';
+
+const client = SDK();
+
+client.on('group-icon-changed', async (message) => {
+  const attachment = message.attachments?.[0];
+  if (!attachment) return;
+  
+  try {
+    const blob = await client.attachments.download(attachment.guid);
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    
+    const filename = `group-icon-${Date.now()}.jpg`;
+    fs.writeFileSync(filename, buffer);
+    
+    console.log(`Group icon saved as ${filename}`);
+  } catch (error) {
+    console.error('Failed to download group icon:', error);
+  }
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+---
+
+### group-icon-removed
+
+Emitted when a group chat's icon/photo is removed.
+
+<ResponseField name="data" type="MessageResponse">
+  Message object containing the group icon removal information
+  
+  <Expandable title="properties">
+    <ResponseField name="guid" type="string" required>
+      Unique identifier for this system message
+    </ResponseField>
+    
+    <ResponseField name="groupActionType" type="number" required>
+      Action type code indicating icon was removed
+    </ResponseField>
+    
+    <ResponseField name="isFromMe" type="boolean" required>
+      Whether you removed the group icon
+    </ResponseField>
+    
+    <ResponseField name="handle" type="HandleResponse | null">
+      The user who removed the group icon
+    </ResponseField>
+    
+    <ResponseField name="chats" type="ChatResponse[]">
+      Array containing the affected group chat
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```typescript Basic Usage
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('group-icon-removed', (message) => {
+  const remover = message.isFromMe ? 'You' : message.handle?.id;
+  console.log(`${remover} removed the group icon`);
+});
+
+await client.connect();
+```
+
+```typescript Track Icon Changes
+import { SDK } from 'advanced-imessage';
+
+const client = SDK();
+
+client.on('group-icon-changed', (message) => {
+  console.log(`✏️  Group icon updated by ${message.handle?.id}`);
+});
+
+client.on('group-icon-removed', (message) => {
+  console.log(`🗑️  Group icon removed by ${message.handle?.id}`);
+});
+
+await client.connect();
+```
+</CodeGroup>
+
+## Event Methods
+
+### on()
+
+Register a listener that will be called every time the event is emitted.
+
+```typescript
+client.on('group-name-change', (message) => {
+  console.log(message);
+});
+```
+
+### once()
+
+Register a listener that will be called only once, then automatically removed.
+
+```typescript
+client.once('participant-added', (message) => {
+  console.log('First participant addition:', message);
+});
+```
+
+### off()
+
+Remove a specific listener from an event.
+
+```typescript
+const handler = (message) => {
+  console.log(message);
+};
+
+client.on('participant-removed', handler);
+
+// Later, remove the listener
+client.off('participant-removed', handler);
+```
+
+<Note>
+You must pass the exact same function reference to `off()` that was passed to `on()`. Anonymous functions cannot be removed.
+</Note>
+
+## Related
+
+- [Chats API](/api/chats/get-chats) - Manage group chats
+- [Message Events](/api/events/message-events) - Handle messages in groups

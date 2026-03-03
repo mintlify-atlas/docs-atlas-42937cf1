@@ -1,0 +1,228 @@
+---
+title: "Download Attachments"
+description: "Download attachments, Live Photos, and generate blurhashes"
+---
+
+## downloadAttachment
+
+```typescript
+async downloadAttachment(
+  guid: string,
+  options?: {
+    original?: boolean;
+    force?: boolean;
+    height?: number;
+    width?: number;
+    quality?: number;
+  }
+): Promise<Buffer>
+```
+
+Download an attachment by its GUID. Supports image resizing and quality adjustment.
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  The GUID of the attachment to download
+</ParamField>
+
+<ParamField path="options" type="object">
+  Download options
+  
+  <Expandable title="options">
+    <ParamField path="original" type="boolean">
+      If `true`, downloads the original file without any processing. Default: `false`
+    </ParamField>
+    
+    <ParamField path="force" type="boolean">
+      If `true`, forces a fresh download even if cached. Default: `false`
+    </ParamField>
+    
+    <ParamField path="height" type="number">
+      Target height in pixels for image resizing (only applies to images)
+    </ParamField>
+    
+    <ParamField path="width" type="number">
+      Target width in pixels for image resizing (only applies to images)
+    </ParamField>
+    
+    <ParamField path="quality" type="number">
+      Image quality (0-100). Lower values reduce file size. Only applies to images
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="Buffer" type="Buffer">
+  Binary data of the downloaded attachment
+</ResponseField>
+
+### Examples
+
+#### Download Original File
+
+```typescript
+const buffer = await client.attachment.downloadAttachment(
+  "attachment-guid-123",
+  { original: true }
+);
+
+await fs.writeFile("/path/to/save/file.jpg", buffer);
+```
+
+#### Download with Resizing
+
+```typescript
+const thumbnail = await client.attachment.downloadAttachment(
+  "attachment-guid-123",
+  {
+    width: 300,
+    height: 300,
+    quality: 80
+  }
+);
+
+await fs.writeFile("/path/to/thumbnail.jpg", thumbnail);
+```
+
+#### Download and Convert to Base64
+
+```typescript
+const buffer = await client.attachment.downloadAttachment("attachment-guid-123");
+const base64 = buffer.toString('base64');
+console.log(`data:image/jpeg;base64,${base64}`);
+```
+
+---
+
+## downloadAttachmentLive
+
+```typescript
+async downloadAttachmentLive(guid: string): Promise<Buffer>
+```
+
+Download the Live Photo component of an attachment. Only works for attachments that have a Live Photo.
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  The GUID of the attachment with a Live Photo
+</ParamField>
+
+### Returns
+
+<ResponseField name="Buffer" type="Buffer">
+  Binary data of the Live Photo video component (typically a MOV file)
+</ResponseField>
+
+### Example
+
+```typescript
+// First, check if attachment has a Live Photo
+const attachment = await client.attachment.getAttachment("attachment-guid-123");
+
+if (attachment.hasLivePhoto) {
+  const livePhotoBuffer = await client.attachment.downloadAttachmentLive(
+    "attachment-guid-123"
+  );
+  
+  await fs.writeFile("/path/to/live-photo.mov", livePhotoBuffer);
+}
+```
+
+---
+
+## getAttachmentBlurhash
+
+```typescript
+async getAttachmentBlurhash(
+  guid: string,
+  options?: {
+    height?: number;
+    width?: number;
+    quality?: number;
+  }
+): Promise<string>
+```
+
+Generate a blurhash string for an image attachment. Blurhashes are compact representations of images that can be used as placeholders while loading.
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  The GUID of the image attachment
+</ParamField>
+
+<ParamField path="options" type="object">
+  Image processing options
+  
+  <Expandable title="options">
+    <ParamField path="height" type="number">
+      Target height in pixels for processing
+    </ParamField>
+    
+    <ParamField path="width" type="number">
+      Target width in pixels for processing
+    </ParamField>
+    
+    <ParamField path="quality" type="number">
+      Image quality (0-100) for processing
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="blurhash" type="string">
+  A blurhash string representing the image
+</ResponseField>
+
+### Example
+
+```typescript
+const blurhash = await client.attachment.getAttachmentBlurhash(
+  "attachment-guid-123",
+  { width: 32, height: 32 }
+);
+
+console.log(blurhash); // "LGF5]+Yk^6#M@-5c,1J5@[or[Q6."
+```
+
+### Use Case: Image Placeholders
+
+```typescript
+import { decode } from 'blurhash';
+
+// Get blurhash for fast loading
+const blurhash = await client.attachment.getAttachmentBlurhash(
+  "attachment-guid-123"
+);
+
+// Decode to pixels for display (client-side)
+const pixels = decode(blurhash, 32, 32);
+
+// Later, load full image
+const fullImage = await client.attachment.downloadAttachment(
+  "attachment-guid-123"
+);
+```
+
+## Error Handling
+
+```typescript
+try {
+  const buffer = await client.attachment.downloadAttachment("invalid-guid");
+} catch (error) {
+  if (error.response?.status === 404) {
+    console.error('Attachment not found');
+  } else {
+    console.error('Download failed:', error);
+  }
+}
+```
+
+## See Also
+
+- [Send Attachment](/api/attachments/send-attachment) - Sending file attachments
+- [Attachments Guide](/guides/working-with-attachments) - Working with attachments

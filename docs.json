@@ -1,122 +1,179 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Advanced iMessage Kit",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#007AFF",
+    "light": "#5AC8FA",
+    "dark": "#0A84FF"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/photon-hq/advanced-imessage-kit"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/photon-hq/advanced-imessage-kit"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
+              "installation",
               "quickstart",
-              "development"
+              "configuration"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "core-concepts/chat-guids",
+              "core-concepts/connection-events",
+              "core-concepts/error-handling"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/sending-messages",
+              "guides/receiving-messages",
+              "guides/managing-chats",
+              "guides/working-with-attachments",
+              "guides/real-time-events",
+              "guides/scheduled-messages",
+              "guides/polls",
+              "guides/best-practices"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Client",
             "pages": [
-              "api-reference/introduction"
+              "api/client/advanced-imessage-kit",
+              "api/client/configuration"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Messages",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/messages/send-message",
+              "api/messages/get-messages",
+              "api/messages/edit-message",
+              "api/messages/unsend-message",
+              "api/messages/send-reaction",
+              "api/messages/message-effects"
+            ]
+          },
+          {
+            "group": "Chats",
+            "pages": [
+              "api/chats/get-chats",
+              "api/chats/get-chat",
+              "api/chats/create-chat",
+              "api/chats/manage-groups",
+              "api/chats/typing-indicators",
+              "api/chats/chat-backgrounds"
+            ]
+          },
+          {
+            "group": "Attachments",
+            "pages": [
+              "api/attachments/send-attachment",
+              "api/attachments/download-attachment",
+              "api/attachments/send-sticker",
+              "api/attachments/audio-messages"
+            ]
+          },
+          {
+            "group": "Contacts & Handles",
+            "pages": [
+              "api/contacts/get-contacts",
+              "api/contacts/contact-card",
+              "api/handles/query-handles",
+              "api/handles/check-availability"
+            ]
+          },
+          {
+            "group": "Scheduled Messages",
+            "pages": [
+              "api/scheduled/create-scheduled-message",
+              "api/scheduled/manage-scheduled-messages"
+            ]
+          },
+          {
+            "group": "Polls",
+            "pages": [
+              "api/polls/create-poll",
+              "api/polls/vote",
+              "api/polls/parse-polls"
+            ]
+          },
+          {
+            "group": "iCloud & Find My",
+            "pages": [
+              "api/icloud/find-my-friends"
+            ]
+          },
+          {
+            "group": "Server",
+            "pages": [
+              "api/server/server-info",
+              "api/server/statistics"
+            ]
+          },
+          {
+            "group": "Events",
+            "pages": [
+              "api/events/message-events",
+              "api/events/chat-events",
+              "api/events/group-events",
+              "api/events/typing-events"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Examples",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "examples/basic-usage",
+              "examples/auto-reply-bot"
+            ]
+          },
+          {
+            "group": "Message Examples",
+            "pages": [
+              "examples/send-with-effects",
+              "examples/edit-and-unsend",
+              "examples/reactions-and-tapbacks",
+              "examples/rich-links"
+            ]
+          },
+          {
+            "group": "Advanced Features",
+            "pages": [
+              "examples/group-chat-management",
+              "examples/scheduled-messages",
+              "examples/polls",
+              "examples/find-my-integration"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

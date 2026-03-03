@@ -1,0 +1,373 @@
+---
+title: Get Messages
+description: Retrieve messages from chats with filtering, search, and counting capabilities
+---
+
+## getMessage
+
+Retrieve a single message by its GUID.
+
+### Method Signature
+
+```typescript
+await sdk.messages.getMessage(guid: string, options?: { with?: string[] }): Promise<MessageResponse>
+```
+
+### Parameters
+
+<ParamField path="guid" type="string" required>
+  The unique identifier of the message to retrieve
+</ParamField>
+
+<ParamField path="options.with" type="string[]">
+  Array of related entities to include in the response
+  
+  Options:
+  - `"handle"` - Include sender/recipient information
+  - `"chats"` - Include chat information
+  - `"attachments"` - Include attachment data
+</ParamField>
+
+### Example
+
+```typescript
+const message = await sdk.messages.getMessage(
+  "iMessage;-;user@example.com;12345",
+  { with: ["handle", "attachments"] }
+);
+
+console.log(`Message: ${message.text}`);
+console.log(`From: ${message.handle?.address}`);
+console.log(`Attachments: ${message.attachments?.length || 0}`);
+```
+
+---
+
+## getMessages
+
+Query and retrieve multiple messages with filtering and pagination.
+
+### Method Signature
+
+```typescript
+await sdk.messages.getMessages(options?: {
+  chatGuid?: string;
+  offset?: number;
+  limit?: number;
+  sort?: "ASC" | "DESC";
+  before?: number;
+  after?: number;
+  with?: string[];
+}): Promise<MessageResponse[]>
+```
+
+### Parameters
+
+<ParamField path="chatGuid" type="string">
+  Filter messages to a specific chat
+</ParamField>
+
+<ParamField path="offset" type="number" default="0">
+  Number of messages to skip (for pagination)
+</ParamField>
+
+<ParamField path="limit" type="number" default="100">
+  Maximum number of messages to return
+</ParamField>
+
+<ParamField path="sort" type="'ASC' | 'DESC'" default="DESC">
+  Sort order by creation date
+  - `"ASC"` - Oldest first
+  - `"DESC"` - Newest first
+</ParamField>
+
+<ParamField path="before" type="number">
+  Only return messages created before this timestamp (milliseconds since epoch)
+</ParamField>
+
+<ParamField path="after" type="number">
+  Only return messages created after this timestamp (milliseconds since epoch)
+</ParamField>
+
+<ParamField path="with" type="string[]">
+  Array of related entities to include. Options: `"handle"`, `"chats"`, `"attachments"`
+</ParamField>
+
+### Examples
+
+#### Get Recent Messages from a Chat
+
+```typescript
+const messages = await sdk.messages.getMessages({
+  chatGuid: "iMessage;-;user@example.com",
+  limit: 50,
+  sort: "DESC"
+});
+
+console.log(`Retrieved ${messages.length} messages`);
+messages.forEach(msg => {
+  console.log(`[${new Date(msg.dateCreated)}] ${msg.text}`);
+});
+```
+
+#### Paginate Through Messages
+
+```typescript
+const pageSize = 25;
+let offset = 0;
+let hasMore = true;
+
+while (hasMore) {
+  const messages = await sdk.messages.getMessages({
+    chatGuid: "iMessage;-;user@example.com",
+    offset,
+    limit: pageSize,
+    sort: "DESC"
+  });
+  
+  console.log(`Page ${offset / pageSize + 1}: ${messages.length} messages`);
+  
+  hasMore = messages.length === pageSize;
+  offset += pageSize;
+}
+```
+
+#### Get Messages from Last 24 Hours
+
+```typescript
+const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+
+const recentMessages = await sdk.messages.getMessages({
+  after: oneDayAgo,
+  with: ["handle"]
+});
+
+console.log(`${recentMessages.length} messages in the last 24 hours`);
+```
+
+#### Get Messages in Date Range
+
+```typescript
+const startDate = new Date("2026-03-01").getTime();
+const endDate = new Date("2026-03-02").getTime();
+
+const messages = await sdk.messages.getMessages({
+  after: startDate,
+  before: endDate,
+  chatGuid: "iMessage;-;user@example.com"
+});
+
+console.log(`${messages.length} messages on March 1st, 2026`);
+```
+
+---
+
+## searchMessages
+
+Search for messages containing specific text.
+
+### Method Signature
+
+```typescript
+await sdk.messages.searchMessages(options: {
+  query: string;
+  chatGuid?: string;
+  offset?: number;
+  limit?: number;
+  sort?: "ASC" | "DESC";
+  before?: number;
+  after?: number;
+}): Promise<MessageResponse[]>
+```
+
+<Note>
+On macOS 13+, search uses Spotlight API with token-based matching. Word boundaries matter: "Hello" matches "Hello world" but "Hell" does not match "Hello".
+</Note>
+
+### Parameters
+
+<ParamField path="query" type="string" required>
+  Search query text. Cannot be empty. Uses token-based matching on macOS 13+.
+</ParamField>
+
+<ParamField path="chatGuid" type="string">
+  Limit search to a specific chat
+</ParamField>
+
+<ParamField path="offset" type="number" default="0">
+  Number of results to skip
+</ParamField>
+
+<ParamField path="limit" type="number" default="100">
+  Maximum number of results to return
+</ParamField>
+
+<ParamField path="sort" type="'ASC' | 'DESC'" default="DESC">
+  Sort order by creation date
+</ParamField>
+
+<ParamField path="before" type="number">
+  Only search messages before this timestamp
+</ParamField>
+
+<ParamField path="after" type="number">
+  Only search messages after this timestamp
+</ParamField>
+
+### Examples
+
+#### Basic Search
+
+```typescript
+const results = await sdk.messages.searchMessages({
+  query: "meeting",
+  limit: 20
+});
+
+console.log(`Found ${results.length} messages containing "meeting"`);
+```
+
+#### Search Within a Chat
+
+```typescript
+const results = await sdk.messages.searchMessages({
+  query: "project deadline",
+  chatGuid: "iMessage;-;user@example.com"
+});
+
+results.forEach(msg => {
+  console.log(`${msg.text} - ${new Date(msg.dateCreated).toLocaleDateString()}`);
+});
+```
+
+#### Search with Date Range
+
+```typescript
+const lastWeek = Date.now() - (7 * 24 * 60 * 60 * 1000);
+
+const results = await sdk.messages.searchMessages({
+  query: "invoice",
+  after: lastWeek,
+  sort: "DESC"
+});
+
+console.log(`${results.length} messages about invoices in the last week`);
+```
+
+---
+
+## getMessageCount
+
+Get the total count of messages matching specific criteria.
+
+### Method Signature
+
+```typescript
+await sdk.messages.getMessageCount(options?: {
+  after?: number;
+  before?: number;
+  chatGuid?: string;
+  minRowId?: number;
+  maxRowId?: number;
+}): Promise<number>
+```
+
+### Parameters
+
+<ParamField path="after" type="number">
+  Count messages created after this timestamp
+</ParamField>
+
+<ParamField path="before" type="number">
+  Count messages created before this timestamp
+</ParamField>
+
+<ParamField path="chatGuid" type="string">
+  Count messages in a specific chat
+</ParamField>
+
+<ParamField path="minRowId" type="number">
+  Minimum database row ID
+</ParamField>
+
+<ParamField path="maxRowId" type="number">
+  Maximum database row ID
+</ParamField>
+
+### Examples
+
+#### Count All Messages
+
+```typescript
+const totalMessages = await sdk.messages.getMessageCount();
+console.log(`Total messages: ${totalMessages}`);
+```
+
+#### Count Messages in Chat
+
+```typescript
+const count = await sdk.messages.getMessageCount({
+  chatGuid: "iMessage;-;user@example.com"
+});
+console.log(`Messages in chat: ${count}`);
+```
+
+#### Count Recent Messages
+
+```typescript
+const yesterday = Date.now() - (24 * 60 * 60 * 1000);
+const count = await sdk.messages.getMessageCount({
+  after: yesterday
+});
+console.log(`Messages in last 24 hours: ${count}`);
+```
+
+## Response Format
+
+All methods (except `getMessageCount`) return `MessageResponse` objects with the following key fields:
+
+<ResponseField name="guid" type="string">
+  Unique message identifier
+</ResponseField>
+
+<ResponseField name="text" type="string">
+  Message text content
+</ResponseField>
+
+<ResponseField name="dateCreated" type="number">
+  Creation timestamp (milliseconds since epoch)
+</ResponseField>
+
+<ResponseField name="dateRead" type="number | null">
+  Read timestamp, or null if unread
+</ResponseField>
+
+<ResponseField name="dateDelivered" type="number | null">
+  Delivery timestamp, or null if not delivered
+</ResponseField>
+
+<ResponseField name="isFromMe" type="boolean">
+  Whether the message was sent by you
+</ResponseField>
+
+<ResponseField name="handle" type="HandleResponse | null">
+  Sender/recipient information (if included with `with` parameter)
+</ResponseField>
+
+<ResponseField name="chats" type="ChatResponse[]">
+  Associated chats (if included with `with` parameter)
+</ResponseField>
+
+<ResponseField name="attachments" type="AttachmentResponse[]">
+  Attached files (if included with `with` parameter)
+</ResponseField>
+
+<ResponseField name="dateEdited" type="number | null">
+  Last edit timestamp, or null if never edited
+</ResponseField>
+
+## Related Methods
+
+- [sendMessage](/api/messages/send-message) - Send a new message
+- [editMessage](/api/messages/edit-message) - Edit an existing message
+- [unsendMessage](/api/messages/unsend-message) - Unsend a message

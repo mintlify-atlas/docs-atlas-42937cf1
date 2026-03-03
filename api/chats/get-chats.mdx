@@ -1,0 +1,184 @@
+---
+title: "Get Chats"
+description: "Retrieve and query chat conversations"
+---
+
+## getChats
+
+Retrieve a list of chat conversations with optional filtering and pagination.
+
+```typescript
+await client.chat.getChats(options?): Promise<ChatResponse[]>
+```
+
+### Parameters
+
+<ParamField path="options" type="object" optional>
+  Optional configuration for querying chats
+  
+  <ParamField path="withLastMessage" type="boolean" optional>
+    Include the last message in each chat response
+  </ParamField>
+  
+  <ParamField path="withArchived" type="boolean" optional>
+    Include archived chats in the results
+  </ParamField>
+  
+  <ParamField path="offset" type="number" optional>
+    Number of chats to skip for pagination
+  </ParamField>
+  
+  <ParamField path="limit" type="number" optional>
+    Maximum number of chats to return
+  </ParamField>
+  
+  <ParamField path="sort" type="string" optional>
+    Sort order for the chats
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="chats" type="ChatResponse[]">
+  Array of chat objects
+  
+  <ResponseField name="originalROWID" type="number">
+    Database row ID
+  </ResponseField>
+  
+  <ResponseField name="guid" type="string">
+    Unique identifier for the chat
+  </ResponseField>
+  
+  <ResponseField name="chatIdentifier" type="string">
+    Chat identifier string
+  </ResponseField>
+  
+  <ResponseField name="displayName" type="string">
+    Display name of the chat
+  </ResponseField>
+  
+  <ResponseField name="style" type="number">
+    Chat style (0 = individual, 43 = group)
+  </ResponseField>
+  
+  <ResponseField name="isArchived" type="boolean">
+    Whether the chat is archived
+  </ResponseField>
+  
+  <ResponseField name="isFiltered" type="boolean" optional>
+    Whether the chat is filtered
+  </ResponseField>
+  
+  <ResponseField name="groupId" type="string" optional>
+    Group identifier for group chats
+  </ResponseField>
+  
+  <ResponseField name="participants" type="HandleResponse[]" optional>
+    Array of participant handles (if requested)
+  </ResponseField>
+  
+  <ResponseField name="messages" type="MessageResponse[]" optional>
+    Array of messages (if requested)
+  </ResponseField>
+  
+  <ResponseField name="lastMessage" type="MessageResponse" optional>
+    Most recent message in the chat (if withLastMessage is true)
+  </ResponseField>
+  
+  <ResponseField name="lastAddressedHandle" type="string | null" optional>
+    Last addressed handle in the chat
+  </ResponseField>
+  
+  <ResponseField name="properties" type="object[] | null" optional>
+    Additional chat properties
+  </ResponseField>
+</ResponseField>
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+// Get all chats with last message
+const chats = await client.chat.getChats({
+  withLastMessage: true,
+  limit: 50
+});
+
+console.log(`Found ${chats.length} chats`);
+chats.forEach(chat => {
+  console.log(`${chat.displayName}: ${chat.lastMessage?.text}`);
+});
+
+// Get chats with pagination
+const page1 = await client.chat.getChats({
+  offset: 0,
+  limit: 20
+});
+
+const page2 = await client.chat.getChats({
+  offset: 20,
+  limit: 20
+});
+
+// Include archived chats
+const allChats = await client.chat.getChats({
+  withArchived: true
+});
+```
+
+---
+
+## getChatCount
+
+Get the total count of chats with optional breakdown.
+
+```typescript
+await client.chat.getChatCount(options?): Promise<{ total: number; breakdown: Record<string, number> }>
+```
+
+### Parameters
+
+<ParamField path="options" type="object" optional>
+  Optional configuration for counting chats
+  
+  <ParamField path="includeArchived" type="boolean" optional>
+    Include archived chats in the count
+  </ParamField>
+</ParamField>
+
+### Returns
+
+<ResponseField name="result" type="object">
+  Chat count information
+  
+  <ResponseField name="total" type="number">
+    Total number of chats
+  </ResponseField>
+  
+  <ResponseField name="breakdown" type="Record<string, number>">
+    Breakdown of chat counts by category
+  </ResponseField>
+</ResponseField>
+
+### Example
+
+```typescript
+import { iMessageKit } from 'advanced-imessage-kit';
+
+const client = new iMessageKit({ baseUrl: 'http://localhost:1234' });
+
+// Get total chat count
+const count = await client.chat.getChatCount();
+console.log(`Total chats: ${count.total}`);
+console.log('Breakdown:', count.breakdown);
+
+// Include archived chats in count
+const fullCount = await client.chat.getChatCount({
+  includeArchived: true
+});
+console.log(`Total chats (including archived): ${fullCount.total}`);
+```

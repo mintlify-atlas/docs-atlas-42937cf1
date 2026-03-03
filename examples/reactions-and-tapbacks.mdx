@@ -1,0 +1,403 @@
+---
+title: 'Reactions and Tapbacks'
+description: 'Add emoji reactions and tapbacks to messages'
+icon: 'heart'
+---
+
+## Overview
+
+Send tapback reactions to messages, just like in the native iMessage app. Available reactions include love, like, dislike, laugh, emphasize, and question.
+
+## Basic Reactions
+
+Send a reaction to an existing message:
+
+```typescript
+import { createSDK, handleError } from "./utils";
+
+const CHAT_GUID = process.env.CHAT_GUID || "any;-;+1234567890";
+const MESSAGE_GUID = process.env.MESSAGE_GUID;
+
+async function main() {
+    const sdk = createSDK();
+
+    sdk.on("ready", async () => {
+        try {
+            let messageGuid = MESSAGE_GUID;
+
+            // Send a test message if we don't have a GUID
+            if (!messageGuid) {
+                const testMessage = await sdk.messages.sendMessage({
+                    chatGuid: CHAT_GUID,
+                    message: "Test message for reactions!",
+                });
+
+                messageGuid = testMessage.guid;
+                console.log(`sent: ${messageGuid}`);
+            }
+
+            // Send a heart reaction
+            await sdk.messages.sendReaction({
+                chatGuid: CHAT_GUID,
+                messageGuid,
+                reaction: "love",
+            });
+
+            console.log("Sent ❤️ reaction");
+        } catch (error) {
+            handleError(error, "Failed to send reaction");
+        }
+
+        await sdk.close();
+        process.exit(0);
+    });
+
+    await sdk.connect();
+}
+
+main().catch(console.error);
+```
+
+## Available Reactions
+
+<CardGroup cols={3}>
+  <Card title="Love" icon="heart">
+    ```typescript
+    reaction: "love"
+    ```
+    Sends ❤️
+  </Card>
+  <Card title="Like" icon="thumbs-up">
+    ```typescript
+    reaction: "like"
+    ```
+    Sends 👍
+  </Card>
+  <Card title="Dislike" icon="thumbs-down">
+    ```typescript
+    reaction: "dislike"
+    ```
+    Sends 👎
+  </Card>
+  <Card title="Laugh" icon="face-laugh">
+    ```typescript
+    reaction: "laugh"
+    ```
+    Sends 😂
+  </Card>
+  <Card title="Emphasize" icon="exclamation">
+    ```typescript
+    reaction: "emphasize"
+    ```
+    Sends ‼️
+  </Card>
+  <Card title="Question" icon="question">
+    ```typescript
+    reaction: "question"
+    ```
+    Sends ❓
+  </Card>
+</CardGroup>
+
+## Multiple Reactions Example
+
+Send multiple reactions to the same message:
+
+```typescript
+import { createSDK, handleError } from "./utils";
+
+const CHAT_GUID = process.env.CHAT_GUID || "any;-;+1234567890";
+const MESSAGE_GUID = process.env.MESSAGE_GUID;
+
+async function main() {
+    const sdk = createSDK();
+
+    sdk.on("ready", async () => {
+        try {
+            let messageGuid = MESSAGE_GUID;
+
+            if (!messageGuid) {
+                const testMessage = await sdk.messages.sendMessage({
+                    chatGuid: CHAT_GUID,
+                    message: "Test message for reactions!",
+                });
+
+                messageGuid = testMessage.guid;
+                console.log(`sent: ${messageGuid}`);
+            }
+
+            // ❤️ = love
+            await sdk.messages.sendReaction({
+                chatGuid: CHAT_GUID,
+                messageGuid,
+                reaction: "love",
+            });
+
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // 😂 = laugh
+            await sdk.messages.sendReaction({
+                chatGuid: CHAT_GUID,
+                messageGuid,
+                reaction: "laugh",
+            });
+
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // 👎 = dislike
+            await sdk.messages.sendReaction({
+                chatGuid: CHAT_GUID,
+                messageGuid,
+                reaction: "dislike",
+            });
+
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // 👍 = like
+            await sdk.messages.sendReaction({
+                chatGuid: CHAT_GUID,
+                messageGuid,
+                reaction: "like",
+            });
+        } catch (error) {
+            handleError(error, "Failed to send reaction");
+        }
+
+        await sdk.close();
+        process.exit(0);
+    });
+
+    await sdk.connect();
+}
+
+main().catch(console.error);
+```
+
+## Parameters
+
+<ParamField path="chatGuid" type="string" required>
+  The GUID of the chat containing the message
+</ParamField>
+
+<ParamField path="messageGuid" type="string" required>
+  The GUID of the message to react to
+</ParamField>
+
+<ParamField path="reaction" type="string" required>
+  The reaction type: `"love"`, `"like"`, `"dislike"`, `"laugh"`, `"emphasize"`, or `"question"`
+</ParamField>
+
+## Auto-React Bot
+
+Automatically react to incoming messages:
+
+```typescript
+sdk.on("new-message", async (message) => {
+    // Don't react to own messages
+    if (message.isFromMe) return;
+    
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    const text = message.text?.toLowerCase() || "";
+    let reaction: string | null = null;
+
+    // Choose reaction based on message content
+    if (text.includes("love") || text.includes("❤️")) {
+        reaction = "love";
+    } else if (text.includes("funny") || text.includes("😂")) {
+        reaction = "laugh";
+    } else if (text.includes("great") || text.includes("awesome")) {
+        reaction = "like";
+    } else if (text.includes("?")) {
+        reaction = "question";
+    } else if (text.includes("!")) {
+        reaction = "emphasize";
+    }
+
+    if (reaction) {
+        try {
+            await sdk.messages.sendReaction({
+                chatGuid: chat.guid,
+                messageGuid: message.guid,
+                reaction,
+            });
+            console.log(`Reacted with ${reaction} to: ${message.text}`);
+        } catch (error) {
+            console.error("Failed to react:", error);
+        }
+    }
+});
+```
+
+## Removing Reactions
+
+To remove a reaction, send the same reaction type again. iMessage will toggle it off:
+
+```typescript
+// Send love reaction
+await sdk.messages.sendReaction({
+    chatGuid: CHAT_GUID,
+    messageGuid: messageGuid,
+    reaction: "love",
+});
+
+// Remove love reaction (send it again)
+await sdk.messages.sendReaction({
+    chatGuid: CHAT_GUID,
+    messageGuid: messageGuid,
+    reaction: "love",
+});
+```
+
+## Advanced Examples
+
+### Sentiment Analysis Reactions
+
+```typescript
+import { analyzeSentiment } from "./sentiment"; // Your sentiment analysis
+
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe || !message.text) return;
+    
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    const sentiment = await analyzeSentiment(message.text);
+    
+    let reaction: string;
+    if (sentiment > 0.5) {
+        reaction = "love";
+    } else if (sentiment > 0) {
+        reaction = "like";
+    } else if (sentiment < -0.5) {
+        reaction = "dislike";
+    } else {
+        reaction = "question";
+    }
+
+    await sdk.messages.sendReaction({
+        chatGuid: chat.guid,
+        messageGuid: message.guid,
+        reaction,
+    });
+});
+```
+
+### Random Reaction Generator
+
+```typescript
+const reactions = ["love", "like", "laugh", "emphasize"] as const;
+
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    // 20% chance to react
+    if (Math.random() < 0.2) {
+        const reaction = reactions[Math.floor(Math.random() * reactions.length)];
+        
+        await sdk.messages.sendReaction({
+            chatGuid: chat.guid,
+            messageGuid: message.guid,
+            reaction,
+        });
+    }
+});
+```
+
+### Reaction Counter
+
+```typescript
+const reactionCounts = new Map<string, number>();
+
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const sender = message.handle?.address;
+    if (!sender) return;
+
+    // Count reactions per sender
+    const count = reactionCounts.get(sender) || 0;
+    reactionCounts.set(sender, count + 1);
+
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    // Different reaction based on how many messages they've sent
+    let reaction: string;
+    if (count < 5) {
+        reaction = "like";
+    } else if (count < 10) {
+        reaction = "love";
+    } else {
+        reaction = "emphasize";
+    }
+
+    await sdk.messages.sendReaction({
+        chatGuid: chat.guid,
+        messageGuid: message.guid,
+        reaction,
+    });
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Don't spam reactions">
+    Add delays between reactions to avoid overwhelming the recipient:
+    ```typescript
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    ```
+  </Accordion>
+
+  <Accordion title="React to relevant messages only">
+    Filter messages before reacting:
+    ```typescript
+    if (message.isFromMe) return; // Skip own messages
+    if (!message.text) return; // Skip media-only messages
+    ```
+  </Accordion>
+
+  <Accordion title="Handle reaction errors">
+    Reactions can fail if the message doesn't exist:
+    ```typescript
+    try {
+        await sdk.messages.sendReaction({...});
+    } catch (error) {
+        console.error("Reaction failed:", error);
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  You can only react to messages that exist in your message database. You cannot react to messages you haven't received.
+</Tip>
+
+## Listening for Reactions
+
+To detect when someone reacts to your messages, listen for message updates:
+
+```typescript
+sdk.on("updated-message", (message) => {
+    // Check for reaction-related updates
+    if (message.associatedMessageType) {
+        console.log(`Someone reacted to message ${message.associatedMessageGuid}`);
+    }
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Edit Messages" icon="pen-to-square" href="/examples/edit-and-unsend">
+    Modify sent messages
+  </Card>
+  <Card title="Message Effects" icon="wand-magic-sparkles" href="/examples/send-with-effects">
+    Add visual effects
+  </Card>
+</CardGroup>

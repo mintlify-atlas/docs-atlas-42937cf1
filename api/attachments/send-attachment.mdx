@@ -1,0 +1,141 @@
+---
+title: "sendAttachment"
+description: "Send file attachments in iMessage conversations"
+---
+
+## Method Signature
+
+```typescript
+async sendAttachment(options: SendAttachmentOptions): Promise<MessageResponse>
+```
+
+Send a file attachment to an iMessage conversation. Supports any file type that iMessage can handle, including images, videos, documents, and more.
+
+## Parameters
+
+<ParamField path="options" type="SendAttachmentOptions" required>
+  Configuration object for sending the attachment
+  
+  <Expandable title="SendAttachmentOptions">
+    <ParamField path="chatGuid" type="string" required>
+      The GUID of the chat to send the attachment to
+    </ParamField>
+    
+    <ParamField path="filePath" type="string" required>
+      Absolute path to the file to send
+    </ParamField>
+    
+    <ParamField path="fileName" type="string">
+      Optional custom filename. If not provided, uses the basename of `filePath`
+    </ParamField>
+    
+    <ParamField path="isAudioMessage" type="boolean">
+      If `true`, sends the attachment as an audio message with special formatting. See [Audio Messages](/api/attachments/audio-messages) for details
+    </ParamField>
+    
+    <ParamField path="selectedMessageGuid" type="string">
+      GUID of a message to reply to. When set, the attachment will be sent as a reply
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="MessageResponse" type="object">
+  The sent message object containing the attachment metadata
+  
+  <Expandable title="MessageResponse properties">
+    <ResponseField name="guid" type="string">
+      Unique identifier for the sent message
+    </ResponseField>
+    
+    <ResponseField name="tempGuid" type="string">
+      Temporary GUID assigned before the message is sent
+    </ResponseField>
+    
+    <ResponseField name="chatGuid" type="string">
+      The chat where the message was sent
+    </ResponseField>
+    
+    <ResponseField name="text" type="string | null">
+      Text content (null for attachment-only messages)
+    </ResponseField>
+    
+    <ResponseField name="dateCreated" type="number">
+      Timestamp when the message was created
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Send an Image
+
+```typescript
+const message = await client.attachment.sendAttachment({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/path/to/photo.jpg"
+});
+
+console.log(`Image sent: ${message.guid}`);
+```
+
+### Send with Custom Filename
+
+```typescript
+const message = await client.attachment.sendAttachment({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/tmp/download.pdf",
+  fileName: "Report-Q1-2024.pdf"
+});
+```
+
+### Send as a Reply
+
+```typescript
+const message = await client.attachment.sendAttachment({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/path/to/screenshot.png",
+  selectedMessageGuid: "original-message-guid"
+});
+```
+
+### Send Video
+
+```typescript
+const message = await client.attachment.sendAttachment({
+  chatGuid: "iMessage;+;chat123456",
+  filePath: "/path/to/video.mp4",
+  fileName: "vacation.mp4"
+});
+```
+
+## Behavior
+
+- If the specified chat doesn't exist, it will be created automatically before sending
+- The method is queued to ensure messages are sent in order
+- File is read from disk and uploaded as multipart form data
+- All file types supported by iMessage can be sent
+
+## Error Handling
+
+```typescript
+try {
+  const message = await client.attachment.sendAttachment({
+    chatGuid: "iMessage;+;chat123456",
+    filePath: "/path/to/file.jpg"
+  });
+} catch (error) {
+  if (error.code === 'ENOENT') {
+    console.error('File not found');
+  } else {
+    console.error('Failed to send attachment:', error);
+  }
+}
+```
+
+## See Also
+
+- [Audio Messages](/api/attachments/audio-messages) - Sending audio messages
+- [Send Sticker](/api/attachments/send-sticker) - Sending stickers
+- [Download Attachment](/api/attachments/download-attachment) - Downloading attachments

@@ -1,0 +1,217 @@
+---
+title: "Manage Scheduled Messages"
+description: "List, update, and delete scheduled messages"
+---
+
+## Get All Scheduled Messages
+
+```typescript
+await sdk.scheduledMessages.getScheduledMessages(): Promise<ScheduledMessageData[]>
+```
+
+Retrieves all scheduled messages.
+
+### Returns
+
+<ResponseField name="ScheduledMessageData[]" type="array">
+  Array of all scheduled messages
+  
+  <Expandable title="items">
+    <ResponseField name="id" type="number">
+      Unique identifier for the scheduled message
+    </ResponseField>
+    
+    <ResponseField name="chatGuid" type="string">
+      The chat GUID this message is scheduled for
+    </ResponseField>
+    
+    <ResponseField name="message" type="string">
+      The message text that will be sent
+    </ResponseField>
+    
+    <ResponseField name="scheduledFor" type="number">
+      Timestamp when the message will be sent
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="number">
+      Timestamp when the scheduled message was created
+    </ResponseField>
+    
+    <ResponseField name="type" type="string">
+      The action type (e.g., "send-message")
+    </ResponseField>
+    
+    <ResponseField name="payload" type="object">
+      The full payload configuration
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+const messages = await sdk.scheduledMessages.getScheduledMessages();
+console.log(`Found ${messages.length} scheduled message(s)`);
+
+for (const msg of messages) {
+  console.log(`[${msg.id}] ${msg.payload?.message}`);
+  console.log(`  Scheduled for: ${new Date(msg.scheduledFor).toLocaleString()}`);
+}
+```
+
+---
+
+## Update Scheduled Message
+
+```typescript
+await sdk.scheduledMessages.updateScheduledMessage(
+  id: string,
+  options: UpdateScheduledMessageOptions
+): Promise<ScheduledMessageData>
+```
+
+Updates an existing scheduled message.
+
+### Parameters
+
+<ParamField path="id" type="string" required>
+  The ID of the scheduled message to update
+</ParamField>
+
+<ParamField path="options" type="UpdateScheduledMessageOptions" required>
+  New configuration for the scheduled message (same structure as create)
+  
+  <Expandable title="properties">
+    <ParamField path="type" type="string" required>
+      Type of scheduled action (e.g., `"send-message"`)
+    </ParamField>
+    
+    <ParamField path="payload" type="object" required>
+      The updated message payload
+      
+      <Expandable title="properties">
+        <ParamField path="chatGuid" type="string" required>
+          The chat GUID to send the message to
+        </ParamField>
+        
+        <ParamField path="message" type="string" required>
+          The updated message text to send
+        </ParamField>
+        
+        <ParamField path="method" type="string" required>
+          Send method (e.g., `"apple-script"`)
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="scheduledFor" type="number" required>
+      Updated timestamp for when the message should be sent
+    </ParamField>
+    
+    <ParamField path="schedule" type="ScheduleConfig" required>
+      Updated schedule configuration (`{ type: "once" }` or recurring)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="ScheduledMessageData" type="object">
+  The updated scheduled message
+</ResponseField>
+
+### Example
+
+```typescript
+// Update a scheduled message to send 10 minutes from now
+const updated = await sdk.scheduledMessages.updateScheduledMessage("12345", {
+  type: "send-message",
+  payload: {
+    chatGuid: "iMessage;-;+1234567890",
+    message: "Updated message text!",
+    method: "apple-script",
+  },
+  scheduledFor: Date.now() + 10 * 60 * 1000,
+  schedule: { type: "once" },
+});
+
+console.log(`Updated message ID: ${updated.id}`);
+```
+
+---
+
+## Delete Scheduled Message
+
+```typescript
+await sdk.scheduledMessages.deleteScheduledMessage(id: string): Promise<void>
+```
+
+Deletes a scheduled message, preventing it from being sent.
+
+### Parameters
+
+<ParamField path="id" type="string" required>
+  The ID of the scheduled message to delete
+</ParamField>
+
+### Returns
+
+Promise that resolves when the message is deleted.
+
+### Example
+
+```typescript
+await sdk.scheduledMessages.deleteScheduledMessage("12345");
+console.log("Scheduled message deleted");
+```
+
+---
+
+## Complete Example
+
+```typescript
+import { iMessageSDK } from "advanced-imessage-kit";
+
+const sdk = new iMessageSDK({ serverUrl: "http://localhost:3000" });
+
+sdk.on("ready", async () => {
+  // List all scheduled messages
+  const messages = await sdk.scheduledMessages.getScheduledMessages();
+  console.log(`Found ${messages.length} scheduled message(s)`);
+  
+  for (const msg of messages) {
+    console.log(`[${msg.id}] ${msg.payload?.message}`);
+  }
+  
+  // Update a specific scheduled message
+  if (messages.length > 0) {
+    const firstId = messages[0].id.toString();
+    
+    const updated = await sdk.scheduledMessages.updateScheduledMessage(firstId, {
+      type: "send-message",
+      payload: {
+        chatGuid: messages[0].chatGuid,
+        message: "Updated message!",
+        method: "apple-script",
+      },
+      scheduledFor: Date.now() + 5 * 60 * 1000, // 5 minutes from now
+      schedule: { type: "once" },
+    });
+    
+    console.log(`Updated message ${updated.id}`);
+    
+    // Delete it
+    // await sdk.scheduledMessages.deleteScheduledMessage(firstId);
+    // console.log(`Deleted message ${firstId}`);
+  }
+});
+
+await sdk.connect();
+```
+
+## Notes
+
+- Use `getScheduledMessages()` to find the ID of a message you want to update or delete
+- Updating a scheduled message completely replaces its configuration
+- Deleting a scheduled message is immediate and cannot be undone
+- For recurring messages, deleting stops all future occurrences

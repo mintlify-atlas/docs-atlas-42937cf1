@@ -1,0 +1,220 @@
+---
+title: 'Auto-Reply Bot'
+description: 'Build an automated message responder with the SDK'
+icon: 'robot'
+---
+
+## Overview
+
+Create an automated bot that listens for incoming messages and sends automatic replies. This example demonstrates how to process incoming messages, extract sender information, and respond programmatically.
+
+## Basic Auto-Reply Bot
+
+This bot responds to every incoming message by prefixing it with "Hey!":
+
+```typescript
+import { createSDK, handleExit } from "./utils";
+
+async function main() {
+    const sdk = createSDK();
+
+    sdk.on("ready", () => {
+        console.log("Auto-reply started");
+    });
+
+    sdk.on("new-message", async (message) => {
+        console.log(`\nReceived: ${message.text || "(no text)"}`);
+        console.log(`From: ${message.handle?.address || "unknown"}`);
+
+        // Skip messages from self
+        if (message.isFromMe) {
+            return;
+        }
+
+        // Get chat guid from message
+        const chat = message.chats?.[0];
+        if (!chat) {
+            return;
+        }
+
+        try {
+            const originalText = message.text || message.attributedBody?.[0]?.string || "";
+            const replyText = `Hey! ${originalText}`;
+
+            const response = await sdk.messages.sendMessage({
+                chatGuid: chat.guid,
+                message: replyText,
+            });
+
+            console.log(`Replied: ${response.guid}`);
+        } catch (error) {
+            console.error("Failed to reply:", error);
+        }
+    });
+
+    await sdk.connect();
+    handleExit(sdk);
+}
+
+main().catch(console.error);
+```
+
+## How It Works
+
+<Steps>
+  <Step title="Listen for Messages">
+    The SDK fires a `new-message` event for every incoming message
+  </Step>
+  <Step title="Filter Self Messages">
+    Check `message.isFromMe` to avoid responding to your own messages
+  </Step>
+  <Step title="Extract Chat Context">
+    Get the chat GUID from `message.chats[0].guid` to reply in the same conversation
+  </Step>
+  <Step title="Send Reply">
+    Use `sdk.messages.sendMessage()` with the chat GUID and your reply text
+  </Step>
+</Steps>
+
+## Advanced Patterns
+
+### Keyword-Based Responses
+
+```typescript
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const text = message.text?.toLowerCase() || "";
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    let reply = "";
+
+    if (text.includes("hello") || text.includes("hi")) {
+        reply = "Hello! How can I help you today?";
+    } else if (text.includes("help")) {
+        reply = "I'm a bot! Send 'status' to check system status.";
+    } else if (text.includes("status")) {
+        reply = "All systems operational!";
+    } else {
+        reply = "I received your message!";
+    }
+
+    await sdk.messages.sendMessage({
+        chatGuid: chat.guid,
+        message: reply,
+    });
+});
+```
+
+### Time-Based Responses
+
+```typescript
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const chat = message.chats?.[0];
+    if (!chat) return;
+
+    const hour = new Date().getHours();
+    let greeting = "";
+
+    if (hour < 12) {
+        greeting = "Good morning!";
+    } else if (hour < 18) {
+        greeting = "Good afternoon!";
+    } else {
+        greeting = "Good evening!";
+    }
+
+    await sdk.messages.sendMessage({
+        chatGuid: chat.guid,
+        message: `${greeting} Thanks for your message: "${message.text}"`,
+    });
+});
+```
+
+### Contact-Specific Responses
+
+```typescript
+const VIP_CONTACTS = ["+1234567890", "+0987654321"];
+
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const sender = message.handle?.address;
+    const chat = message.chats?.[0];
+    if (!chat || !sender) return;
+
+    const isVIP = VIP_CONTACTS.includes(sender);
+    const reply = isVIP 
+        ? "VIP message received! Processing immediately..." 
+        : "Thank you for your message. We'll get back to you soon.";
+
+    await sdk.messages.sendMessage({
+        chatGuid: chat.guid,
+        message: reply,
+    });
+});
+```
+
+## Best Practices
+
+<Warning>
+  Always check `message.isFromMe` to prevent infinite reply loops where the bot responds to its own messages!
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Rate Limiting">
+    Consider implementing rate limiting to avoid sending too many messages:
+    ```typescript
+    const replyTimes = new Map();
+    const COOLDOWN = 60000; // 1 minute
+
+    sdk.on("new-message", async (message) => {
+        const sender = message.handle?.address;
+        const lastReply = replyTimes.get(sender);
+        
+        if (lastReply && Date.now() - lastReply < COOLDOWN) {
+            console.log("Cooldown active, skipping reply");
+            return;
+        }
+        
+        // Send reply...
+        replyTimes.set(sender, Date.now());
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Error Handling">
+    Always wrap `sendMessage` in try-catch blocks to handle network errors gracefully:
+    ```typescript
+    try {
+        await sdk.messages.sendMessage({...});
+    } catch (error) {
+        console.error("Failed to send reply:", error);
+        // Optionally: retry logic or error notifications
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Message Parsing">
+    Handle different message formats:
+    ```typescript
+    const text = message.text || 
+                 message.attributedBody?.[0]?.string || 
+                 "";
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Scheduled Messages" icon="clock" href="/examples/scheduled-messages">
+    Send messages at specific times
+  </Card>
+  <Card title="Message Effects" icon="wand-magic-sparkles" href="/examples/send-with-effects">
+    Add effects to auto-replies
+  </Card>
+</CardGroup>

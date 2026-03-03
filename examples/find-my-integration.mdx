@@ -1,0 +1,438 @@
+---
+title: 'Find My Integration'
+description: 'Access real-time location data from Find My Friends and devices'
+icon: 'location-dot'
+---
+
+## Overview
+
+The SDK provides access to Apple's Find My network, allowing you to retrieve location data for friends who are sharing their location with you and track your own devices.
+
+<Warning>
+  Find My integration requires iCloud authentication and proper location sharing permissions. Users must be sharing their location with you through Find My Friends.
+</Warning>
+
+## Find My Friends
+
+Retrieve location data for friends sharing their location:
+
+```typescript
+import type { FindMyLocationItem } from "../types/findmy";
+import { createSDK } from "./utils";
+
+const TARGET_HANDLE = process.env.TARGET_HANDLE || "+1234567890";
+
+function formatLocation(loc: FindMyLocationItem, indent = ""): string {
+    const lines = [
+        `${indent}Coordinates: ${loc.coordinates[0]}, ${loc.coordinates[1]}`,
+        `${indent}Maps: https://maps.google.com/?q=${loc.coordinates[0]},${loc.coordinates[1]}`,
+    ];
+    if (loc.long_address) lines.push(`${indent}Address: ${loc.long_address}`);
+    if (loc.expiry) {
+        const remaining = Math.floor((loc.expiry - Date.now()) / 60000);
+        lines.push(`${indent}Expires in: ${remaining} minutes`);
+    }
+    return lines.join("\n");
+}
+
+async function main() {
+    const sdk = createSDK();
+    await sdk.connect();
+
+    const locations = await sdk.icloud.refreshFindMyFriends();
+
+    // Check target handle
+    const target = locations.find((l) => l.handle === TARGET_HANDLE);
+    console.log(`\nTarget: ${TARGET_HANDLE}\n`);
+    if (target) {
+        console.log(formatLocation(target, "  "));
+    } else {
+        console.log("  Not sharing location");
+    }
+
+    // List all friends
+    console.log(`\nAll Friends (${locations.length}):`);
+    for (const loc of locations) {
+        console.log(`\n  ${loc.handle}`);
+        console.log(formatLocation(loc, "    "));
+    }
+
+    process.exit(0);
+}
+
+main().catch(console.error);
+```
+
+## Location Data Structure
+
+Each location object contains:
+
+<ResponseField name="handle" type="string">
+  Phone number or email of the person sharing location
+</ResponseField>
+
+<ResponseField name="coordinates" type="[number, number]">
+  Latitude and longitude: `[lat, lng]`
+</ResponseField>
+
+<ResponseField name="long_address" type="string">
+  Full address (e.g., "123 Main St, City, State 12345")
+</ResponseField>
+
+<ResponseField name="short_address" type="string">
+  Shortened address (e.g., "City, State")
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Location status indicator
+</ResponseField>
+
+<ResponseField name="last_updated" type="number">
+  Unix timestamp of when location was last updated
+</ResponseField>
+
+<ResponseField name="expiry" type="number">
+  Unix timestamp when location data expires
+</ResponseField>
+
+## Real-Time Location Updates
+
+Listen for location updates as they happen:
+
+```typescript
+import type { FindMyLocationItem } from "../types/findmy";
+import { createSDK, handleExit } from "./utils";
+
+function formatTime(timestamp: number): string {
+    return new Date(timestamp).toLocaleTimeString();
+}
+
+function formatLocation(loc: FindMyLocationItem, indent = "  "): string {
+    const parts = [
+        `${indent}Coordinates: ${loc.coordinates[0]}, ${loc.coordinates[1]}`,
+        `${indent}Maps:        https://maps.google.com/?q=${loc.coordinates[0]},${loc.coordinates[1]}`,
+    ];
+    if (loc.long_address) parts.push(`${indent}Address:     ${loc.long_address}`);
+    if (loc.short_address) parts.push(`${indent}Short:       ${loc.short_address}`);
+    parts.push(`${indent}Status:      ${loc.status}`);
+    parts.push(`${indent}Updated:     ${formatTime(loc.last_updated)}`);
+    if (loc.expiry) {
+        const remaining = Math.floor((loc.expiry - Date.now()) / 60000);
+        parts.push(`${indent}Expires in:  ${remaining} minutes`);
+    }
+    return parts.join("\n");
+}
+
+async function main() {
+    const sdk = createSDK();
+
+    sdk.on("ready", async () => {
+        console.log("\n--- Initial locations ---");
+        try {
+            const locations = await sdk.icloud.refreshFindMyFriends();
+            if (locations.length === 0) {
+                console.log("  No friends sharing location.");
+            }
+            for (const loc of locations) {
+                console.log(`\n  ${loc.handle}`);
+                console.log(formatLocation(loc));
+            }
+        } catch (err) {
+            console.error("Failed to fetch initial locations:", err);
+        }
+
+        console.log("\n--- Watching for updates (Ctrl+C to stop) ---");
+        console.log("  Server auto-refreshes every 30s.\n");
+    });
+
+    sdk.on("new-findmy-location", (location: FindMyLocationItem) => {
+        console.log(`[${formatTime(Date.now())}] ${location.handle} updated:`);
+        console.log(formatLocation(location));
+        console.log();
+    });
+
+    await sdk.connect();
+    handleExit(sdk);
+}
+
+main().catch(console.error);
+```
+
+## Events
+
+<AccordionGroup>
+  <Accordion title="new-findmy-location">
+    Fired when a friend's location updates:
+    ```typescript
+    sdk.on("new-findmy-location", (location: FindMyLocationItem) => {
+        console.log(`${location.handle} is at:`);
+        console.log(`  ${location.coordinates[0]}, ${location.coordinates[1]}`);
+        console.log(`  ${location.long_address}`);
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Use Cases
+
+### Location Tracker
+
+```typescript
+const locationHistory = new Map<string, FindMyLocationItem[]>();
+
+sdk.on("new-findmy-location", (location) => {
+    const handle = location.handle;
+    const history = locationHistory.get(handle) || [];
+    
+    history.push(location);
+    locationHistory.set(handle, history);
+
+    console.log(`${handle} has ${history.length} recorded locations`);
+});
+```
+
+### Proximity Alert
+
+```typescript
+const HOME_COORDS = [37.7749, -122.4194]; // San Francisco
+const ALERT_RADIUS = 1; // km
+
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+sdk.on("new-findmy-location", async (location) => {
+    const [lat, lng] = location.coordinates;
+    const distance = getDistance(HOME_COORDS[0], HOME_COORDS[1], lat, lng);
+
+    if (distance < ALERT_RADIUS) {
+        console.log(`🏠 ${location.handle} is near home!`);
+        
+        // Send notification
+        const chat = await findChatForHandle(location.handle);
+        if (chat) {
+            await sdk.messages.sendMessage({
+                chatGuid: chat.guid,
+                message: "Welcome home!",
+            });
+        }
+    }
+});
+```
+
+### Location Sharing Bot
+
+```typescript
+sdk.on("new-message", async (message) => {
+    if (message.isFromMe) return;
+    
+    const text = message.text?.toLowerCase() || "";
+    const sender = message.handle?.address;
+    const chat = message.chats?.[0];
+    
+    if (!chat || !sender) return;
+
+    if (text.includes("where are you") || text === "location?") {
+        const locations = await sdk.icloud.refreshFindMyFriends();
+        const myLocation = locations.find(l => l.handle === sender);
+
+        if (myLocation) {
+            const [lat, lng] = myLocation.coordinates;
+            await sdk.messages.sendMessage({
+                chatGuid: chat.guid,
+                message: `I'm at: ${myLocation.long_address || 'Unknown'}\nhttps://maps.google.com/?q=${lat},${lng}`,
+            });
+        } else {
+            await sdk.messages.sendMessage({
+                chatGuid: chat.guid,
+                message: "Location sharing not enabled.",
+            });
+        }
+    }
+});
+```
+
+### ETA Calculator
+
+```typescript
+const DESTINATIONS = {
+    "office": [37.7749, -122.4194],
+    "home": [37.8044, -122.2712],
+};
+
+sdk.on("new-message", async (message) => {
+    const text = message.text?.toLowerCase() || "";
+    const sender = message.handle?.address;
+    const chat = message.chats?.[0];
+    
+    if (!chat || !sender) return;
+
+    const etaMatch = text.match(/eta to (\w+)/i);
+    if (etaMatch) {
+        const destination = etaMatch[1].toLowerCase();
+        const destCoords = DESTINATIONS[destination];
+        
+        if (destCoords) {
+            const locations = await sdk.icloud.refreshFindMyFriends();
+            const userLoc = locations.find(l => l.handle === sender);
+            
+            if (userLoc) {
+                const distance = getDistance(
+                    userLoc.coordinates[0],
+                    userLoc.coordinates[1],
+                    destCoords[0],
+                    destCoords[1]
+                );
+                
+                // Assume average speed of 50 km/h
+                const eta = Math.round(distance / 50 * 60); // minutes
+                
+                await sdk.messages.sendMessage({
+                    chatGuid: chat.guid,
+                    message: `ETA to ${destination}: ~${eta} minutes (${distance.toFixed(1)} km away)`,
+                });
+            }
+        }
+    }
+});
+```
+
+## Refresh Interval
+
+<Info>
+  The server automatically refreshes Find My locations every 30 seconds. You can manually trigger a refresh with:
+  ```typescript
+  const locations = await sdk.icloud.refreshFindMyFriends();
+  ```
+</Info>
+
+## Formatting Helpers
+
+### Google Maps Link
+
+```typescript
+function getMapsLink(lat: number, lng: number): string {
+    return `https://maps.google.com/?q=${lat},${lng}`;
+}
+
+const link = getMapsLink(location.coordinates[0], location.coordinates[1]);
+```
+
+### Time Remaining
+
+```typescript
+function getTimeRemaining(expiry: number): string {
+    const minutes = Math.floor((expiry - Date.now()) / 60000);
+    if (minutes > 60) {
+        return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    }
+    return `${minutes}m`;
+}
+```
+
+### Distance Format
+
+```typescript
+function formatDistance(km: number): string {
+    if (km < 1) {
+        return `${Math.round(km * 1000)}m`;
+    }
+    return `${km.toFixed(1)}km`;
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Respect privacy">
+    Only access location data when necessary and with proper consent:
+    ```typescript
+    // Store user preferences
+    const allowedUsers = new Set(["+1234567890"]);
+    
+    sdk.on("new-findmy-location", (location) => {
+        if (allowedUsers.has(location.handle)) {
+            // Process location
+        }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Handle expired locations">
+    Check if location data is still valid:
+    ```typescript
+    if (location.expiry && Date.now() > location.expiry) {
+        console.log("Location data expired, refreshing...");
+        await sdk.icloud.refreshFindMyFriends();
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Cache location data">
+    Reduce API calls by caching:
+    ```typescript
+    const locationCache = new Map();
+    const CACHE_TTL = 30000; // 30 seconds
+    
+    async function getLocation(handle: string) {
+        const cached = locationCache.get(handle);
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+            return cached.data;
+        }
+        
+        const locations = await sdk.icloud.refreshFindMyFriends();
+        const location = locations.find(l => l.handle === handle);
+        
+        if (location) {
+            locationCache.set(handle, {
+                data: location,
+                timestamp: Date.now(),
+            });
+        }
+        
+        return location;
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Location sharing must be enabled in iCloud settings. Users must explicitly share their location with your Apple ID.
+</Warning>
+
+<Tip>
+  Use the `long_address` field for human-readable addresses instead of raw coordinates when displaying location info to users.
+</Tip>
+
+## Troubleshooting
+
+1. **No locations returned** - Verify:
+   - iCloud is signed in on the server
+   - Find My Friends is enabled
+   - Contacts are sharing location with you
+
+2. **Stale location data** - Call `refreshFindMyFriends()` to force an update
+
+3. **Missing addresses** - Some locations may not have address data, always check:
+   ```typescript
+   const address = location.long_address || location.short_address || "Unknown location";
+   ```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Auto-Reply Bot" icon="robot" href="/examples/auto-reply-bot">
+    Combine with messaging
+  </Card>
+  <Card title="Scheduled Messages" icon="clock" href="/examples/scheduled-messages">
+    Send location-based reminders
+  </Card>
+</CardGroup>
